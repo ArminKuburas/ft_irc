@@ -56,8 +56,14 @@ int main(int argc, char **argv)
 		}
 		if (!is_digit(port))
 		{
-			std::cout << "Error: por must be only digits within range XXXX-XXXX" << std::endl;
+			std::cout << "Error: port must be only digits within range 1-65535" << std::endl;
 			std::cout << usage << std::endl;
+			return (EXIT_FAILURE);
+		}
+		int port_number = std::stoi(port);
+		if (port_number > 1 && port_number < 65535)
+		{
+			std::cout << "Error: port number must be in the range 1-65535" << std::endl;
 			return (EXIT_FAILURE);
 		}
 		int socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -85,7 +91,7 @@ int main(int argc, char **argv)
 		struct sockaddr_in server_addr;
 		memset(&server_addr, 0, sizeof(server_addr));
 		server_addr.sin_family = AF_INET;
-		server_addr.sin_port = htons(6667);
+		server_addr.sin_port = htons(port_number);
 		server_addr.sin_addr.s_addr = INADDR_ANY;
 
 		if (bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
@@ -105,22 +111,28 @@ int main(int argc, char **argv)
 		std::cout << "Server is listening in non-blocking mode" << std::endl;
 		
 		int client_fd;
-		while (42)
+		while (true) // change condition to signal handler later
 		{
 			client_fd = accept(socket_fd, nullptr, nullptr);
 			if (client_fd == -1)
 			{
-				std::cout << "No incoming connections, retrying...." << std::endl;
-				usleep(1000000);
-				continue ;
-			}
-			else
-			{
-				perror("accept failed");
-				break ;
+				if (errno == EAGAIN || errno == EWOULDBLOCK)
+				{
+					std::cout << "No incoming connections, retrying...." << std::endl;
+					usleep(500000);
+					continue ;
+				}
+				else
+				{
+					perror("accept failed");
+					break ;
+				}
 			}
 		}
 		std::cout << "Client connected! File descriptor: " << client_fd << std::endl;
+
+		// placeholder for client handling logic
+
 		close(client_fd);
 		std::cout << socket_fd << std::endl;
 		close(socket_fd);
