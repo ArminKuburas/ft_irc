@@ -61,8 +61,9 @@ int main(int argc, char **argv)
 			return (EXIT_FAILURE);
 		}
 		int port_number = std::stoi(port);
-		if (port_number > 1 && port_number < 65535)
+		if (port_number < 1 && port_number > 65535)
 		{
+			std::cout << "here" << std::endl;
 			std::cout << "Error: port number must be in the range 1-65535" << std::endl;
 			return (EXIT_FAILURE);
 		}
