@@ -49,3 +49,19 @@ void	Client::setClientFd( int clientFd )
 {
 	this->_clientFd = clientFd;
 }
+
+
+int	Client::getClientFd()
+{
+	return (this->_clientFd);
+}
+
+struct pollfd *Client::getFds()
+{
+	return (this->_fds);
+}
+
+void	Client::setPollFd( struct pollfd *fds )
+{
+	this->_fds = fds;
+}

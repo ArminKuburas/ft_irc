@@ -126,6 +126,16 @@ int main(int argc, char **argv)
 			client.setClientAddr(client_addr);
 			client.setClientAddrLen(client_addr_len);
 			std::cout << "Client connected! File descriptor: " << client_fd << std::endl;
+			const char *message = "Hello, client! I am the server!";
+			ssize_t bytes_sent = send(client_fd, message, strlen(message), 0);
+			if (bytes_sent < 0)
+			{
+				perror("send failed");
+				std::cout << "Error: " << errno << std::endl;
+				close(client_fd);
+				close(irc.getSocket());
+				return (EXIT_FAILURE);
+			}
 			char buffer[1024];
 			ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
 			if (bytes_read < 0)

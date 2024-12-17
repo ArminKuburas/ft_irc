@@ -18,6 +18,8 @@
 #include <cstring>
 #include <fcntl.h>
 #include <poll.h>
+#include <vector>
+#include "Client.hpp"
 
 class Server
 {
@@ -25,7 +27,8 @@ class Server
 		int					_port;
 		int					_serverSocket;
 		struct sockaddr_in	_serverAddr;
-		// struct pollfd		_fds[100];
+		std::vector<Client>	_clients;
+		
 	public:
 		// constructor
 		Server( std::string port );
@@ -40,10 +43,9 @@ class Server
 		// pollfd		*getFdPoll();
 
 		// setters
-		void		setFdPoll();
 		void		setSocket( int socket );
 		void		setServerAddr();
-		// void		setFdPoll();
+		
 
 		// public methods
 		void portConversion( std::string port );
