@@ -10,10 +10,10 @@
 
 #include "../inc/Server.hpp"
 
-Server::Server( std::string port )
+Server::Server(int port, std::string password)
 {
-	if (!port.empty())
-		this->portConversion(port);
+	this->_port = port;
+	this->_password = password;
 }
 
 Server::~Server()

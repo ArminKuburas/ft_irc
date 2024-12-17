@@ -55,50 +55,49 @@ int main(int argc, char **argv)
 	std::string port = argv[1], password = argv[2];
 	if (parsing(port, password) == false)
 		return (EXIT_FAILURE);
-	Server irc(port);
-	Client client(password);
+	Server irc_server(std::stoi(port), password);
 	int server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (server_fd < 0)
 	{
 		perror("Socket creation failed");
 		return (EXIT_FAILURE);
 	}
-	irc.setSocket(server_fd);
-	int flags = fcntl(irc.getSocket(), F_GETFL);
+	irc_server.setSocket(server_fd);
+	int flags = fcntl(irc_server.getSocket(), F_GETFL);
 	if (flags == -1)
 	{
 		perror("fcntl(F_GETFL) failed");
-		close(irc.getSocket());
+		close(irc_server.getSocket());
 		return (EXIT_FAILURE);
 	}
-	if (fcntl(irc.getSocket(), F_SETFL, flags | O_NONBLOCK) == -1)
+	if (fcntl(irc_server.getSocket(), F_SETFL, flags | O_NONBLOCK) == -1)
 	{
 		perror("fcntl(F_SETFL) failed");
-		close (irc.getSocket());
+		close (irc_server.getSocket());
 		return (EXIT_FAILURE);
 	}
-	irc.setServerAddr();
+	irc_server.setServerAddr();
 	std::cout << "Server is set to non-blocking mode" << std::endl;
-	if (bind(irc.getSocket(), (struct sockaddr *)&irc.getServerAddr(), sizeof(irc.getServerAddr())) < 0)
+	if (bind(irc_server.getSocket(), (struct sockaddr *)&irc_server.getServerAddr(), sizeof(irc_server.getServerAddr())) < 0)
 	{
 		perror("bind failed");
 		std::cout << "Error: " << errno << std::endl;
-		close(irc.getSocket());
+		close(irc_server.getSocket());
 		return (EXIT_FAILURE);
 	}
-	if (listen(irc.getSocket(), 5) == -1)
+	if (listen(irc_server.getSocket(), 5) == -1)
 	{
 		perror("listening failed");
 		std::cout << "Error: " << errno << std::endl;
-		close(irc.getSocket());
+		close(irc_server.getSocket());
 		return (EXIT_FAILURE);
 	}
 	std::cout << "Server is listening in non-blocking mode" << std::endl;
 	
-	irc.setServerAddr();
+	irc_server.setServerAddr();
 
 	struct pollfd fds[1];
-	fds[0].fd = irc.getSocket();
+	fds[0].fd = irc_server.getSocket();
 	fds[0].events = POLLIN; // monitor for incoming connections
 
 	while (true)
@@ -108,19 +107,19 @@ int main(int argc, char **argv)
 		{
 			perror("poll failed");
 			std::cout << "Error: " << errno << std::endl;
-			close(irc.getSocket());
+			close(irc_server.getSocket());
 			return (EXIT_FAILURE);
 		}
 		if (fds[0].revents & POLLIN)
 		{
 			struct sockaddr_in client_addr;
 			socklen_t client_addr_len = sizeof(client_addr);
-			int client_fd = accept(irc.getSocket(), (struct sockaddr*)&client_addr, &client_addr_len);
+			int client_fd = accept(irc_server.getSocket(), (struct sockaddr*)&client_addr, &client_addr_len);
 			if (client_fd < 0)
 			{
 				perror("accept failed");
 				std::cout << "Error: " << errno << std::endl;
-				close(irc.getSocket());
+				close(irc_server.getSocket());
 				return (EXIT_FAILURE);
 			}
 			client.setClientAddr(client_addr);

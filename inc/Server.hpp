@@ -25,13 +25,14 @@ class Server
 {
 	private:
 		int					_port;
+		std::string			_password;
 		int					_serverSocket;
 		struct sockaddr_in	_serverAddr;
 		std::vector<Client>	_clients;
 		
 	public:
 		// constructor
-		Server( std::string port );
+		Server(int port, std::string password);
 		
 		// destructor
 		~Server();
@@ -45,7 +46,7 @@ class Server
 		// setters
 		void		setSocket( int socket );
 		void		setServerAddr();
-		
+
 
 		// public methods
 		void portConversion( std::string port );
