@@ -16,6 +16,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <poll.h>
+# include "Message.hpp"
 
 /**
  * TO DO 
@@ -169,7 +170,23 @@ int main(int argc, char **argv)
 				return (EXIT_FAILURE);
 			}
 			buffer[bytes_read] = '\0';
-			std::cout << "Message: " << buffer << std::endl;
+			//std::cout << "Message: " << buffer << std::endl;
+			try {
+				std::string rawMessage = std::string(buffer);
+				rawMessage.pop_back();
+				rawMessage += "\r\n";
+				Message msg(rawMessage);
+				std::cout << "Prefix:_" << msg.getPrefix() << "_\n";
+				std::cout << "Command:_" << msg.getCommand() << "_\n";
+				std::cout << "Params:_" << msg.getParams() << "_\n";
+				std::cout << "Suffix:_" << msg.getSuffix() << "_\n";
+
+				std::cout << "Serialized msg:\n";
+				std::string serMSG = msg.serialize();
+				std::cout << serMSG << "\n";
+			} catch (const std::exception& e) {
+				std::cerr << "Error: " << e.what() << "\n";
+	}
 			close(client_fd); // at this point we are taking one message and closing the fd
 		}
 	}
