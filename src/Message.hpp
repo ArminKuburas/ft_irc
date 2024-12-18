@@ -19,15 +19,15 @@ class Message
 		std::string suffix_;
 		std::string sender_;
 		std::string recipient_;
+		void parseIncommingMessage(std::string rawMessage);
 
 	public:
 		Message(std::string rawMessage);
-		std::string getPrefix();
-		std::string getCommand();
-		std::string getParams();
-		std::string getSuffix();
-		std::string getSender();
-		std::string getRecipient();
-		void parseIncommingMessage(std::string rawMessage);
+		std::string getPrefix() const;
+		std::string getCommand() const;
+		std::string getParams() const;
+		std::string getSuffix() const;
+		std::string getSender() const;
+		std::string getRecipient() const;
 		std::string serialize();
 };
