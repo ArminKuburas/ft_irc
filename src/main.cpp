@@ -174,10 +174,14 @@ int main(int argc, char **argv)
 			try {
 				std::string rawMessage = std::string(buffer) + "\r\n";
 				Message msg(rawMessage);
-				std::cout << "Prefix: " << msg.getPrefix() << "\n";
-				std::cout << "Command: " << msg.getCommand() << "\n";
-				std::cout << "Params: " << msg.getParams() << "\n";
-				std::cout << "Suffix: " << msg.getSuffix() << "\n";
+				std::cout << "Prefix:_" << msg.getPrefix() << "_\n";
+				std::cout << "Command:_" << msg.getCommand() << "_\n";
+				std::cout << "Params:_" << msg.getParams() << "_\n";
+				std::cout << "Suffix:_" << msg.getSuffix() << "_\n";
+
+				std::cout << "Serialized msg:\n";
+				std::string serMSG = msg.serialize();
+				std::cout << serMSG << "\n";
 			} catch (const std::exception& e) {
 				std::cerr << "Error: " << e.what() << "\n";
 	}

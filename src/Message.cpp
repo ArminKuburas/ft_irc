@@ -33,7 +33,7 @@ void Message::parseIncommingMessage(std::string rawMessage)
 		size_t spacePos = rawMessage.find(' ');
 		if(spacePos == std::string::npos)
 			throw std::invalid_argument("Invalid message format (no space after prefix)");
-		prefix_ =  rawMessage.substr(0, spacePos - 1);
+		prefix_ =  rawMessage.substr(1, spacePos - 1);
 		pos = spacePos + 1;
 	}
 
@@ -50,7 +50,7 @@ void Message::parseIncommingMessage(std::string rawMessage)
 	// Parse params and body
 	size_t colonPos = rawMessage.find(':', pos);
 	if (colonPos != std::string::npos) {
-		params_ = rawMessage.substr(pos, colonPos - pos);
+		params_ = rawMessage.substr(pos, colonPos - pos - 1);
 		suffix_ = rawMessage.substr(colonPos + 1);
 	} else {
 		params_ = rawMessage.substr(pos);
@@ -61,7 +61,7 @@ void Message::parseIncommingMessage(std::string rawMessage)
 std::string Message::serialize()
 {
 	// TODO: the message format differ based on the command
-	std::string message = prefix_ + " " + command_ + " " + params_ + " :" + suffix_ + "\r\n";
+	std::string message = ":" + prefix_ + " " + command_ + " " + params_ + " :" + suffix_ + "\r\n";
 	return message;
 }
 
