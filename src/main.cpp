@@ -172,7 +172,9 @@ int main(int argc, char **argv)
 			buffer[bytes_read] = '\0';
 			//std::cout << "Message: " << buffer << std::endl;
 			try {
-				std::string rawMessage = std::string(buffer) + "\r\n";
+				std::string rawMessage = std::string(buffer);
+				rawMessage.pop_back();
+				rawMessage += "\r\n";
 				Message msg(rawMessage);
 				std::cout << "Prefix:_" << msg.getPrefix() << "_\n";
 				std::cout << "Command:_" << msg.getCommand() << "_\n";

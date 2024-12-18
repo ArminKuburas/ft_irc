@@ -22,11 +22,10 @@ void Message::parseIncommingMessage(std::string rawMessage)
 	if (rawMessage.size() < 2 || rawMessage.substr(rawMessage.size() - 2) != "\r\n") {
 		throw std::invalid_argument("Invalid message format (no CRLF at the end)");
 	}
-	// Remove CRLF
 	rawMessage = rawMessage.substr(0, rawMessage.size() - 2);
 
 	// Parse sections
-	size_t pos;
+	size_t pos = 0;
 	// Parse prefix
 	if(rawMessage[0] == ':')
 	{
@@ -39,8 +38,10 @@ void Message::parseIncommingMessage(std::string rawMessage)
 
 	// Parse command
 	size_t spacePos = rawMessage.find(' ', pos);
+	std::cout << "Command:\n";
 	if(spacePos == std::string::npos)
 	{
+		std::cout << "Only Command:\n";
 		command_ = rawMessage.substr(pos);
 		return;
 	}
@@ -60,8 +61,21 @@ void Message::parseIncommingMessage(std::string rawMessage)
 
 std::string Message::serialize()
 {
-	// TODO: the message format differ based on the command
-	std::string message = ":" + prefix_ + " " + command_ + " " + params_ + " :" + suffix_ + "\r\n";
+	std::string message;
+
+	if (!prefix_.empty())
+		message += ":" + prefix_ + " ";
+
+	if (!command_.empty())
+		message += command_;
+
+	if (!params_.empty())
+		message += " " + params_;
+
+	if (!suffix_.empty())
+		message += " :" + suffix_;
+
+	message += "\r\n";
 	return message;
 }
 
