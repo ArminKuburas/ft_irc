@@ -151,7 +151,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	close(irc.getSocket());
+	close(irc_server.getSocket());
 	
 	return (0);
 }
