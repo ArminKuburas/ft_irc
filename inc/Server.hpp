@@ -20,6 +20,7 @@
 #include <poll.h>
 #include <vector>
 #include "Client.hpp"
+#include "Channel.hpp"
 
 class Server
 {
@@ -50,4 +51,7 @@ class Server
 
 		// public methods
 		void portConversion( std::string port );
+
+		void Run();
+		void AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen );
 };
