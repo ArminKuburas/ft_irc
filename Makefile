@@ -1,8 +1,8 @@
 NAME		=	ircserv
 NAME_ASAN	=	ircsan
 COMP		=	c++
-FLAGS		=	-Wall -Werror -Wextra -std=c++11
-ASAN_FLAGS	= 	-Wall -Werror -Wextra -std=c++11 -fsanitize=address
+FLAGS		=	-Wall -Werror -Wextra -std=c++17
+ASAN_FLAGS	= 	-Wall -Werror -Wextra -std=c++17 -fsanitize=address
 
 SRC_DIR		=	src
 OBJ_DIR		=	obj

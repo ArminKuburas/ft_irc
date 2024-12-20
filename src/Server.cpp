@@ -100,6 +100,8 @@ void	Server::Run()
                     this->_clients.emplace_back(client_fd, client_addr);
                     fds[nfds].fd = client_fd;
                     fds[nfds].events = POLLIN;
+                    const char * welcome_message = "Welcome to the server!\n";
+                    send(client_fd, welcome_message, strlen(welcome_message), 0);
                     ++nfds;
 
                     std::cout << "New client connected: " << client_fd << std::endl;
