@@ -8,6 +8,9 @@
 /*        --------/   										  				  */
 /* ****************************************************************************/
 
+
+#include "../inc/Server.hpp"
+#include "../inc/Client.hpp"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -18,15 +21,7 @@
 #include <poll.h>
 # include "Message.hpp"
 
-/**
- * TO DO 
- *  
- * 1. parse the port input to make sure we are receiving numerical 16 bits info;
- * 2. Check weird inputs to htons();
- * 3. Check with group about password policy; 
- * 4. encrypted port or no?
- * 5. port range? ---------> 6667
- */
+
 bool	isDigit(std::string str)
 {
 	for (char ch : str)
@@ -61,17 +56,6 @@ bool	parsing(std::string port, std::string password)
 	return (true);
 }
 
-int portConversion(std::string port)
-{
-	int port_number = std::stoi(port);
-	if (port_number < 1 && port_number > 65535)
-	{
-		std::cout << "Error: port number must be in the range 1-65535" << std::endl;
-		return (-1);
-	}
-	return (port_number);
-}
-
 int main(int argc, char **argv)
 {
 	if (argc != 3)
@@ -79,54 +63,44 @@ int main(int argc, char **argv)
 		std::cout << "usage: ./ircserv <port> <password>" << std::endl;
 		return (EXIT_FAILURE);
 	}
-
 	std::string port = argv[1], password = argv[2];
-	
 	if (parsing(port, password) == false)
 		return (EXIT_FAILURE);
-	int port_number = portConversion(port);
-	if (port_number == -1)
-		return (EXIT_FAILURE);
+	Server irc_server(std::stoi(port), password);
 	int server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (server_fd < 0)
 	{
 		perror("Socket creation failed");
 		return (EXIT_FAILURE);
 	}
-	int flags = fcntl(server_fd, F_GETFL);
+	irc_server.setSocket(server_fd);
+	int flags = fcntl(irc_server.getSocket(), F_GETFL);
 	if (flags == -1)
 	{
 		perror("fcntl(F_GETFL) failed");
-		close(server_fd);
+		close(irc_server.getSocket());
 		return (EXIT_FAILURE);
 	}
-	if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) == -1)
+	if (fcntl(irc_server.getSocket(), F_SETFL, flags | O_NONBLOCK) == -1)
 	{
 		perror("fcntl(F_SETFL) failed");
-		close (server_fd);
+		close (irc_server.getSocket());
 		return (EXIT_FAILURE);
 	}
-	
+	irc_server.setServerAddr();
 	std::cout << "Server is set to non-blocking mode" << std::endl;
-	struct sockaddr_in server_addr;
-	
-	memset(&server_addr, 0, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(port_number);
-	server_addr.sin_addr.s_addr = INADDR_ANY;
-
-	if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+	if (bind(irc_server.getSocket(), (struct sockaddr *)&irc_server.getServerAddr(), sizeof(irc_server.getServerAddr())) < 0)
 	{
 		perror("bind failed");
 		std::cout << "Error: " << errno << std::endl;
-		close(server_fd);
+		close(irc_server.getSocket());
 		return (EXIT_FAILURE);
 	}
-	if (listen(server_fd, 5) == -1)
+	if (listen(irc_server.getSocket(), 5) == -1)
 	{
 		perror("listening failed");
 		std::cout << "Error: " << errno << std::endl;
-		close(server_fd);
+		close(irc_server.getSocket());
 		return (EXIT_FAILURE);
 	}
 	std::cout << "Server is listening in non-blocking mode" << std::endl;
@@ -191,7 +165,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	close(server_fd);
-	
+	irc_server.Run();	
 	return (0);
 }
