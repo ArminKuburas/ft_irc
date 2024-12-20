@@ -23,7 +23,7 @@ Server::~Server()
 void Server::portConversion( std::string port )
 {
 	int port_number = std::stoi(port);
-	if (port_number < 1 && port_number > 65535)
+	if (port_number < 1 || port_number > 65535)
 	{
 		std::cout << "Error: port number must be in the range 1-65535" << std::endl;
 		return ;
@@ -68,3 +68,74 @@ void	Server::setServerAddr()
 // {	
 // 	return (this->_fds);
 // }
+
+void	Server::Run()
+{
+	struct pollfd fds[1024];
+    int nfds = 1;
+
+    fds[0].fd = this->_serverSocket;
+    fds[0].events = POLLIN;
+
+    while (true) 
+	{
+        int poll_result = poll(fds, nfds, -1);
+        if (poll_result < 0) {
+            perror("poll failed");
+            return;
+        }
+
+        for (int i = 0; i < nfds; ++i) {
+            if (fds[i].revents & POLLIN) {
+                if (fds[i].fd == this->_serverSocket) {
+                    // New client connection
+                    struct sockaddr_in client_addr;
+                    socklen_t client_addr_len = sizeof(client_addr);
+                    int client_fd = accept(this->_serverSocket, (struct sockaddr*)&client_addr, &client_addr_len);
+                    if (client_fd < 0) {
+                        perror("accept failed");
+                        continue;
+                    }
+
+                    this->_clients.emplace_back(client_fd, client_addr);
+                    fds[nfds].fd = client_fd;
+                    fds[nfds].events = POLLIN;
+                    ++nfds;
+
+                    std::cout << "New client connected: " << client_fd << std::endl;
+                } else {
+                    char buffer[1024];
+                    ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer) - 1);
+                    if (bytes_read <= 0) {
+                        std::cout << "Client disconnected: " << fds[i].fd << std::endl;
+                        close(fds[i].fd);
+                        _clients.erase(std::remove_if(_clients.begin(), _clients.end(),
+                            [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; }),
+                            _clients.end());
+                        fds[i] = fds[--nfds];
+                        --i;                
+                    } else {
+                        // Broadcast message to all clients
+                        buffer[bytes_read] = '\0';
+                        std::cout << "Message from client " << fds[i].fd << ": " << buffer << std::endl;
+						std::string str(buffer);
+                        BroadcastMessage(str);
+					}
+				}
+			}
+		}
+	}
+}
+
+void Server::AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen )
+{
+	Client temp = this->_clients.emplace_back(clientFd, clientAddr);
+	temp.setClientAddrLen(clientAddrLen);
+}
+
+void Server::BroadcastMessage(std:: string &messasge)
+{
+	for (auto& client : _clients) {
+		send(client.getClientFd(), messasge.c_str(), messasge.size(), 0);
+	}
+}

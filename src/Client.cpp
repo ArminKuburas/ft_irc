@@ -10,19 +10,14 @@
 
 #include "../inc/Client.hpp"
 
-Client::Client( std::string password )
+Client::Client( int fd, const sockaddr_in& addr )
 {
-	if (!password.empty())
-		this->_password = password;
+	this->_clientFd = fd;
+	this->_clientAddr = addr;
 }
 
 Client::~Client()
 {
-}
-
-std::string Client::getPassword()
-{
-	return (this->_password);
 }
 
 sockaddr_in Client::getClientAddr()
@@ -51,7 +46,7 @@ void	Client::setClientFd( int clientFd )
 }
 
 
-int	Client::getClientFd()
+int	Client::getClientFd() const
 {
 	return (this->_clientFd);
 }

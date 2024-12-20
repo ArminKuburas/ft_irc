@@ -15,23 +15,21 @@
 class Client
 {
 	private:
-		std::string 		_password;
 		struct sockaddr_in	_clientAddr;
 		int 				_clientFd;
 		socklen_t			_clientAddrLen;
 		struct pollfd		*_fds;
 	public:
 		// constructor
-		Client( std::string password );
+		Client( int fd, const sockaddr_in& addr);
 		
 		// destructor
 		~Client();
 		
 		// getters
-		std::string getPassword();
 		sockaddr_in getClientAddr();
 		socklen_t 	getClientAddrLen();
-		int 		getClientFd();
+		int 		getClientFd() const;
 		struct pollfd *getFds();
 
 		// setters

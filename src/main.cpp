@@ -93,65 +93,7 @@ int main(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 	std::cout << "Server is listening in non-blocking mode" << std::endl;
-	
-	irc_server.setServerAddr();
 
-	struct pollfd fds[1];
-	fds[0].fd = irc_server.getSocket();
-	fds[0].events = POLLIN; // monitor for incoming connections
-
-	while (true)
-	{
-		int poll_result = poll(fds, 1, -1); // wait indefinitely for an event
-		if (poll_result < 0)
-		{
-			perror("poll failed");
-			std::cout << "Error: " << errno << std::endl;
-			close(irc_server.getSocket());
-			return (EXIT_FAILURE);
-		}
-		if (fds[0].revents & POLLIN)
-		{
-			struct sockaddr_in client_addr;
-			socklen_t client_addr_len = sizeof(client_addr);
-			int client_fd = accept(irc_server.getSocket(), (struct sockaddr*)&client_addr, &client_addr_len);
-			if (client_fd < 0)
-			{
-				perror("accept failed");
-				std::cout << "Error: " << errno << std::endl;
-				close(irc_server.getSocket());
-				return (EXIT_FAILURE);
-			}
-			client.setClientAddr(client_addr);
-			client.setClientAddrLen(client_addr_len);
-			std::cout << "Client connected! File descriptor: " << client_fd << std::endl;
-			const char *message = "Hello, client! I am the server!";
-			ssize_t bytes_sent = send(client_fd, message, strlen(message), 0);
-			if (bytes_sent < 0)
-			{
-				perror("send failed");
-				std::cout << "Error: " << errno << std::endl;
-				close(client_fd);
-				close(irc.getSocket());
-				return (EXIT_FAILURE);
-			}
-			char buffer[1024];
-			ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
-			if (bytes_read < 0)
-			{
-				perror("read failure");
-				std::cout << "Error: " << errno << std::endl;
-				close(client_fd);
-				close(irc.getSocket());
-				return (EXIT_FAILURE);
-			}
-			buffer[bytes_read] = '\0';
-			std::cout << "Message: " << buffer << std::endl;
-			close(client_fd); // at this point we are taking one message and closing the fd
-		}
-	}
-
-	close(irc_server.getSocket());
-	
+	irc_server.Run();	
 	return (0);
 }

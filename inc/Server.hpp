@@ -20,7 +20,9 @@
 #include <poll.h>
 #include <vector>
 #include "Client.hpp"
-#include "Channel.hpp"
+#include <algorithm>
+
+class Client;
 
 class Server
 {
@@ -54,4 +56,5 @@ class Server
 
 		void Run();
 		void AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen );
+		void BroadcastMessage(std:: string &messasge);
 };
