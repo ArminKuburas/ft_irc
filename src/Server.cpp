@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Server.cpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
+/*   Updated: 2025/01/09 04:48:16 by akuburas         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 /* ****************************************************************************/
 /*  ROFL:ROFL:ROFL:ROFL 													  */
 /*          _^___      										 				  */
@@ -131,8 +143,8 @@ void	Server::Run()
 
 void Server::AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen )
 {
-	Client temp = this->_clients.emplace_back(clientFd, clientAddr);
-	temp.setClientAddrLen(clientAddrLen);
+    this->_clients.emplace_back(clientFd, clientAddr);
+    this->_clients.back().setClientAddrLen(clientAddrLen);
 }
 
 void Server::BroadcastMessage(std:: string &messasge)

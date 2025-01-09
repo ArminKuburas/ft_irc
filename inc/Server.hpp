@@ -57,4 +57,8 @@ class Server
 		void Run();
 		void AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen );
 		void BroadcastMessage(std:: string &messasge);
+
+		void InterpretMessage( std::string &message, int clientFd );
+		void PingPong();
+		void ExitClient( int clientFd );
 };
