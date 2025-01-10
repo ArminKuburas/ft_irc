@@ -75,5 +75,6 @@ class Server
 		void User(Client& client, const std::string& message);
 
 		void initializeCommandHandlers();
+		std::vector<std::string> splitMessages(const std::string& message);
 
 };
