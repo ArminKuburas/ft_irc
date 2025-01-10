@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/10 11:21:26 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/10 18:17:09 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -139,17 +139,41 @@ void	Server::Run()
                     } else {
                         // Broadcast message to all clients
                         buffer[bytes_read] = '\0';
-						std::string message(buffer);
-						std::cout << "Received message from client " << fds[i].fd << ": " << message;
+						std::string receivedData(buffer);
+						std::cout << "Received message from client " << fds[i].fd << ": " << receivedData;
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
 						if (client != _clients.end()) {
-							handleMessage(*client, message);
+							std::vector<std::string> messages = splitMessages(receivedData);
+							for (const auto& message : messages)
+							{
+								handleMessage(*client, message);
+							}
 						}
 					}
 				}
 			}
 		}
 	}
+}
+
+std::vector<std::string> Server::splitMessages(const std::string& message)
+{
+	std::vector<std::string> messages;
+	std::istringstream stream(message);
+	std::string line;
+	
+	while (std::getline(stream, line, '\n'))
+	{
+		if (!line.empty() && line.back() == '\r')
+		{
+			line.pop_back();
+		}
+		if (!line.empty())
+		{
+			messages.push_back(line);
+		}	
+	}
+	return messages;
 }
 
 void Server::AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen )
