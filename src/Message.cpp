@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:42 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/08 09:49:43 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/10 10:28:47 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,7 @@
 /*        --------/   										  				  */
 /* ****************************************************************************/
 
-# include "Message.hpp"
+# include "../inc/Message.hpp"
 
 // Constructor
 Message::Message(std::string rawMessage)
@@ -121,3 +121,4 @@ std::string Message::getRecipient() const
 {
 	return (recipient_);
 }
+

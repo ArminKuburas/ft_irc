@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/08 09:49:49 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/10 10:41:36 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,4 +71,34 @@ struct pollfd *Client::getFds()
 void	Client::setPollFd( struct pollfd *fds )
 {
 	this->_fds = fds;
+}
+
+void	Client::setNick( std::string nick )
+{
+	this->_nick = nick;
+}
+
+std::string	Client::getNick()
+{
+	return (this->_nick);
+}
+
+void	Client::setUser( std::string user )
+{
+	this->_user = user;
+}
+
+std::string	Client::getUser()
+{
+	return (this->_user);
+}
+
+void	Client::setRealname( std::string realname )
+{
+	this->_realname = realname;
+}
+
+std::string	Client::getRealname()
+{
+	return (this->_realname);
 }
