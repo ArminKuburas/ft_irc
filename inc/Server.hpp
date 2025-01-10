@@ -21,8 +21,13 @@
 #include <vector>
 #include "Client.hpp"
 #include <algorithm>
+#include <functional>
+#include <map>
+#include <sstream>
 
 class Client;
+
+using CommandHelper = std::function<void(Client&, const std::string&)>;
 
 class Server
 {
@@ -32,6 +37,7 @@ class Server
 		int					_serverSocket;
 		struct sockaddr_in	_serverAddr;
 		std::vector<Client>	_clients;
+		std::map<std::string, CommandHelper> _commands;
 		
 	public:
 		// constructor
@@ -57,8 +63,17 @@ class Server
 		void Run();
 		void AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen );
 		void BroadcastMessage(std:: string &messasge);
+		void SendToClient(Client& client, const std::string& message);
 
-		void InterpretMessage( std::string &message, int clientFd );
-		void PingPong();
-		void ExitClient( int clientFd );
+		void handleMessage(Client& client, const std::string& message);
+
+		// Command handlers
+		void PingPong(Client& client, const std::string& message);
+		void ExitClient(Client& client, const std::string& message);
+		void Cap(Client& client, const std::string& message);
+		void Nick(Client& client, const std::string& message);
+		void User(Client& client, const std::string& message);
+
+		void initializeCommandHandlers();
+
 };
