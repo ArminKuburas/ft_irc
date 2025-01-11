@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/10 18:17:09 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/11 07:47:10 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -237,16 +237,11 @@ void Server::Nick(Client& client, const std::string& message)
 	}
 	client.setNick(nickname);
 	SendToClient(client, ":server-name 001 " + nickname + " :Welcome to the IRC network, " + nickname + "\r\n");
-	SendToClient(client, ":server 002 " + nickname + " :Your host is server, running version 1.0");
-    SendToClient(client, ":server 003 " + nickname + " :This server was created today");
-    SendToClient(client, ":server 004 " + nickname + " server 1.0 iwso");
 }
 
 void Server::User(Client& client, const std::string& message)
 {
 	std::cout << "USER command received" << std::endl;
-	SendToClient(client, ":server 375 " + client.getNick() + " :- Welcome to the IRC Server -");
-    SendToClient(client, ":server 376 " + client.getNick() + " :End of MOTD");
 	std::istringstream stream(message);
 	std::string command, username, hostname, servername, realname;
 
@@ -261,8 +256,4 @@ void Server::User(Client& client, const std::string& message)
 	}
 	client.setUser(username);
 	client.setRealname(realname);
-	if (!client.getNick().empty())
-	{
-		SendToClient(client, ":server-name 001 " + client.getNick() + " :Welcome to the IRC network, " + client.getNick() + "\r\n");
-	}
 }
