@@ -11,6 +11,7 @@
 #pragma once
 
 #include "Server.hpp"
+#include <set>
 
 class Client
 {
@@ -22,6 +23,7 @@ class Client
 		std::string			_nick;
 		std::string			_user;
 		std::string			_realname;
+		std::set<char>		_userModes;
 	public:
 		// constructor
 		Client( int fd, const sockaddr_in& addr);
@@ -46,4 +48,10 @@ class Client
 		void	setNick( std::string nick );
 		void	setUser( std::string user );
 		void	setRealname( std::string realname );
+
+		//mode
+		bool	hasMode(char mode) const;
+		void	addMode(char mode);
+		void	removeMode(char mode);
+		std::string getModes() const;
 };

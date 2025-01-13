@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/11 11:19:27 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/13 11:42:25 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,10 +31,11 @@ Server::Server(int port, std::string password)
 
 void Server::initializeCommandHandlers()
 {
-	_commands["CAP"] = [this](Client& client, const std::string& message) {Cap(client, message); };
+	_commands["CAP"] = [this](Client& client, const std::string& message)  {Cap(client, message); };
 	_commands["NICK"] = [this](Client& client, const std::string& message) {Nick(client, message); };
 	_commands["USER"] = [this](Client& client, const std::string& message) {User(client, message); };
 	_commands["PING"] = [this](Client& client, const std::string& message) {Ping(client, message); };
+	_commands["MODE"] = [this](Client& client, const std::string& message) {Mode(client, message); };
 }
 
 Server::~Server()
@@ -276,4 +277,39 @@ void Server::Ping(Client& client, const std::string& message)
 	}
 	//PONG response.
 	SendToClient(client, "PONG " + server1 + "\n");
+}
+
+void Server::Mode(Client& client, const std::string& message)
+{
+	std::istringstream stream(message);
+	std::string command, nickname, modeChanges;
+	stream >> command >> nickname >> modeChanges;
+
+	if (nickname != client.getNick())
+	{
+		SendToClient(client, ":server 502 ERR_USERSDONTMATCH :Cannot change mode for another user\n");
+		return;
+	}
+	if (modeChanges.empty())
+	{
+		SendToClient(client, ":server 221 RPL_UMODEIS " + client.getModes() + "\n");
+        return;
+	}
+	bool adding = true;
+	for (char ch : modeChanges)
+	{
+		if (ch == '+')
+			adding = true;
+		else if (ch == '-')
+			adding = false;
+		else if (ch == 'i')
+		{
+			if (adding)
+				client.addMode(ch);
+			else
+				client.removeMode(ch);
+		}
+		else
+			SendToClient(client, ":server 501 ERR_UMODEUNKNOWNFLAG :Unknown mode flag\n");
+	}
 }
