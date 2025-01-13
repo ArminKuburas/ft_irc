@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/13 11:42:25 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/13 13:09:25 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -312,4 +312,14 @@ void Server::Mode(Client& client, const std::string& message)
 		else
 			SendToClient(client, ":server 501 ERR_UMODEUNKNOWNFLAG :Unknown mode flag\n");
 	}
+}
+
+void Server::Priv(Client& client, const std::string& message)
+{
+	
+}
+
+void Server::Quit(Client& client, const std::string& message)
+{
+	
 }
