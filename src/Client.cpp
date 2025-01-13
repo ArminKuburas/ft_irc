@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/10 10:41:36 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/13 11:30:23 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -101,4 +101,29 @@ void	Client::setRealname( std::string realname )
 std::string	Client::getRealname()
 {
 	return (this->_realname);
+}
+
+bool	Client::hasMode(char mode) const
+{
+	return (_userModes.find(mode) != _userModes.end());
+}
+
+void	Client::addMode(char mode)
+{
+	_userModes.insert(mode);
+}
+
+void	Client::removeMode(char mode)
+{
+	_userModes.erase(mode);
+}
+
+std::string Client::getModes() const
+{
+	std::string modes;
+	for (char mode : _userModes)
+	{
+		modes += mode;
+	}
+	return (modes);
 }
