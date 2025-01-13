@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/11 07:47:10 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/11 11:19:27 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,6 +34,7 @@ void Server::initializeCommandHandlers()
 	_commands["CAP"] = [this](Client& client, const std::string& message) {Cap(client, message); };
 	_commands["NICK"] = [this](Client& client, const std::string& message) {Nick(client, message); };
 	_commands["USER"] = [this](Client& client, const std::string& message) {User(client, message); };
+	_commands["PING"] = [this](Client& client, const std::string& message) {Ping(client, message); };
 }
 
 Server::~Server()
@@ -256,4 +257,23 @@ void Server::User(Client& client, const std::string& message)
 	}
 	client.setUser(username);
 	client.setRealname(realname);
+}
+
+void Server::Ping(Client& client, const std::string& message)
+{
+	size_t pos = message.find(" ");
+	if (pos == std::string::npos || pos + 1 >= message.size())
+	
+	{
+	    SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\n");
+		return;
+	}
+	std::string server1 = message.substr(pos + 1);
+	if (server1.empty())
+	{
+		SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\n");
+		return;
+	}
+	//PONG response.
+	SendToClient(client, "PONG " + server1 + "\n");
 }

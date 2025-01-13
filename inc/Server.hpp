@@ -68,11 +68,13 @@ class Server
 		void handleMessage(Client& client, const std::string& message);
 
 		// Command handlers
-		void PingPong(Client& client, const std::string& message);
-		void ExitClient(Client& client, const std::string& message);
+		void Ping(Client& client, const std::string& message);
+		void Pong(Client& client, const std::string& message);
+		void Exit(Client& client, const std::string& message);
 		void Cap(Client& client, const std::string& message);
 		void Nick(Client& client, const std::string& message);
 		void User(Client& client, const std::string& message);
+		void Mode(Client& client, const std::string& message);
 
 		void initializeCommandHandlers();
 		std::vector<std::string> splitMessages(const std::string& message);
