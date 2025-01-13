@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/13 13:09:25 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/13 14:14:19 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@ void Server::initializeCommandHandlers()
 	_commands["USER"] = [this](Client& client, const std::string& message) {User(client, message); };
 	_commands["PING"] = [this](Client& client, const std::string& message) {Ping(client, message); };
 	_commands["MODE"] = [this](Client& client, const std::string& message) {Mode(client, message); };
+	_commands["PRIVMSG"] = [this](Client& client, const std::string& message) {Priv(client, message); };
 }
 
 Server::~Server()
@@ -316,10 +317,32 @@ void Server::Mode(Client& client, const std::string& message)
 
 void Server::Priv(Client& client, const std::string& message)
 {
+	std::stringstream stream(message);
+	std::string target, messageContent;
+	stream >> target;
+	if (target.empty())
+	{
+		SendToClient(client, "ERR_NEEDMOREPARAMS PRIVMSG :Not enough parameters\r\n");
+		return;
+	}
+	std::getline(stream, messageContent);
 	
+	if (!messageContent.empty() && messageContent[0] == ' ')
+		messageContent = messageContent.substr(1);
+	if (!messageContent.empty() && messageContent[0] == ':')
+        messageContent = messageContent.substr(1);
+	auto it = std::find_if(_clients.begin(), _clients.end(), [&target](const Client& c) {return c.getNick() == target; });
+	
+	if (it != _clients.end())
+	{
+		std::string formattedMessage = ":" + client.getNick() + " PRIVMSG " + target + " :" + messageContent + "\r\n";
+		SendToClient(*it, formattedMessage);
+	}
+	else
+		SendToClient(client, "ERR_NOSUCHNICK " + target + " :No such nick/channel\r\n");
 }
 
-void Server::Quit(Client& client, const std::string& message)
-{
+// void Server::Quit(Client& client, const std::string& message)
+// {
 	
-}
+// }
