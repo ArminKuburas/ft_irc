@@ -24,20 +24,23 @@
 #include <functional>
 #include <map>
 #include <sstream>
+#include "Channel.hpp"
 
 class Client;
+class Channel;
 
 using CommandHelper = std::function<void(Client&, const std::string&)>;
 
 class Server
 {
 	private:
-		int					_port;
-		std::string			_password;
-		int					_serverSocket;
-		struct sockaddr_in	_serverAddr;
-		std::vector<Client>	_clients;
-		std::map<std::string, CommandHelper> _commands;
+		int										_port;
+		std::string								_password;
+		int										_serverSocket;
+		struct sockaddr_in						_serverAddr;
+		std::vector<Client>						_clients;
+		std::set<Channel> 						_channels;
+		std::map<std::string, CommandHelper>	_commands;
 		
 	public:
 		// constructor
@@ -75,6 +78,7 @@ class Server
 		void Nick(Client& client, const std::string& message);
 		void User(Client& client, const std::string& message);
 		void Mode(Client& client, const std::string& message);
+		void Join(Client& client, const std::string& message);
 
 		void initializeCommandHandlers();
 		std::vector<std::string> splitMessages(const std::string& message);

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: fdessoy- <fdessoy-@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/13 11:42:25 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/14 15:45:13 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,7 @@
 Server::Server(int port, std::string password)
 {
 	this->_port = port;
-	this->_password = password;
+	this->_password = password; // need to check for password match
 	initializeCommandHandlers();
 }
 
@@ -36,6 +36,7 @@ void Server::initializeCommandHandlers()
 	_commands["USER"] = [this](Client& client, const std::string& message) {User(client, message); };
 	_commands["PING"] = [this](Client& client, const std::string& message) {Ping(client, message); };
 	_commands["MODE"] = [this](Client& client, const std::string& message) {Mode(client, message); };
+	_commands["JOIN"] = [this](Client& client, const std::string& message) {Join(client, message); };
 }
 
 Server::~Server()
@@ -79,17 +80,6 @@ void	Server::setServerAddr()
 	this->_serverAddr.sin_port = htons(this->getPort());
 	this->_serverAddr.sin_addr.s_addr = INADDR_ANY;
 }
-
-// void Server::setFdPoll()
-// {
-// 	this->_fds[0].fd = this->getSocket();
-// 	this->_fds[0].events = POLLIN; 
-// }
-
-// pollfd *Server::getFdPoll()
-// {	
-// 	return (this->_fds);
-// }
 
 void	Server::Run()
 {
@@ -311,5 +301,30 @@ void Server::Mode(Client& client, const std::string& message)
 		}
 		else
 			SendToClient(client, ":server 501 ERR_UMODEUNKNOWNFLAG :Unknown mode flag\n");
+	}
+}
+
+void Server::Join(Client& client, const std::string& message)
+{
+	std::istringstream stream(message);
+	// SendToClient(client, message + "\n");
+	std::string command, channel, key;
+	// command is JOIN
+	// channel is given by user starting with #
+	// key is optional, but must match what the server stablished
+	
+	stream >> command >> channel >> key;
+	
+	if (channel.empty())
+	{
+		SendToClient(client, ": soon we are going to have channels " + command + " " + channel + " " +key + "\n" );
+		// create channel
+	}
+	for (auto it = _channels.begin(); it != _channels.end(); ++it)
+	{
+		if (it->getName() == channel)
+		{
+			//joining point
+		}
 	}
 }
