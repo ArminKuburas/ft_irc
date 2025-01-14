@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Client.cpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
+/*   Updated: 2025/01/13 11:30:23 by akuburas         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 /* ****************************************************************************/
 /*  ROFL:ROFL:ROFL:ROFL 													  */
 /*          _^___      										 				  */
@@ -59,4 +71,59 @@ struct pollfd *Client::getFds()
 void	Client::setPollFd( struct pollfd *fds )
 {
 	this->_fds = fds;
+}
+
+void	Client::setNick( std::string nick )
+{
+	this->_nick = nick;
+}
+
+std::string	Client::getNick()
+{
+	return (this->_nick);
+}
+
+void	Client::setUser( std::string user )
+{
+	this->_user = user;
+}
+
+std::string	Client::getUser()
+{
+	return (this->_user);
+}
+
+void	Client::setRealname( std::string realname )
+{
+	this->_realname = realname;
+}
+
+std::string	Client::getRealname()
+{
+	return (this->_realname);
+}
+
+bool	Client::hasMode(char mode) const
+{
+	return (_userModes.find(mode) != _userModes.end());
+}
+
+void	Client::addMode(char mode)
+{
+	_userModes.insert(mode);
+}
+
+void	Client::removeMode(char mode)
+{
+	_userModes.erase(mode);
+}
+
+std::string Client::getModes() const
+{
+	std::string modes;
+	for (char mode : _userModes)
+	{
+		modes += mode;
+	}
+	return (modes);
 }

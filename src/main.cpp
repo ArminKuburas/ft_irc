@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   main.cpp                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/01/08 09:49:45 by akuburas          #+#    #+#             */
+/*   Updated: 2025/01/09 05:20:21 by akuburas         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 /* ****************************************************************************/
 /*  ROFL:ROFL:ROFL:ROFL 													  */
 /*          _^___      										 				  */
@@ -88,8 +100,17 @@ int main(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 	irc_server.setServerAddr();
+	int server_socket = irc_server.getSocket();
+	int opt = 1;
+	if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
+	{
+		perror("setsockopt failed");
+		std::cout << "Error: " << errno << std::endl;
+		close(server_socket);
+		return (EXIT_FAILURE);
+	}
 	std::cout << "Server is set to non-blocking mode" << std::endl;
-	if (bind(irc_server.getSocket(), (struct sockaddr *)&irc_server.getServerAddr(), sizeof(irc_server.getServerAddr())) < 0)
+	if (bind(server_socket, (struct sockaddr *)&irc_server.getServerAddr(), sizeof(irc_server.getServerAddr())) < 0)
 	{
 		perror("bind failed");
 		std::cout << "Error: " << errno << std::endl;
@@ -105,65 +126,6 @@ int main(int argc, char **argv)
 	}
 	std::cout << "Server is listening in non-blocking mode" << std::endl;
 	std::cout << "Port: " << port << std::endl;
-	
-	struct pollfd fds[1];
-	fds[0].fd = server_fd;
-	fds[0].events = POLLIN; // monitor for incoming connections
-
-	while (true)
-	{
-		int poll_result = poll(fds, 1, -1); // wait indefinitely for an event
-		if (poll_result < 0)
-		{
-			perror("poll failed");
-			std::cout << "Error: " << errno << std::endl;
-			close(server_fd);
-			return (EXIT_FAILURE);
-		}
-		if (fds[0].revents & POLLIN)
-		{
-			struct sockaddr_in client_addr;
-			socklen_t client_addr_len = sizeof(client_addr);
-			int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_addr_len);
-			if (client_fd < 0)
-			{
-				perror("accept failed");
-				std::cout << "Error: " << errno << std::endl;
-				close(server_fd);
-				return (EXIT_FAILURE);
-			}
-			std::cout << "Client connected! File descriptor: " << client_fd << std::endl;
-			char buffer[1024];
-			ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
-			if (bytes_read < 0)
-			{
-				perror("read failure");
-				std::cout << "Error: " << errno << std::endl;
-				close(client_fd);
-				close(server_fd);
-				return (EXIT_FAILURE);
-			}
-			buffer[bytes_read] = '\0';
-			//std::cout << "Message: " << buffer << std::endl;
-			try {
-				std::string rawMessage = std::string(buffer);
-				rawMessage.pop_back();
-				rawMessage += "\r\n";
-				Message msg(rawMessage);
-				std::cout << "Prefix:_" << msg.getPrefix() << "_\n";
-				std::cout << "Command:_" << msg.getCommand() << "_\n";
-				std::cout << "Params:_" << msg.getParams() << "_\n";
-				std::cout << "Suffix:_" << msg.getSuffix() << "_\n";
-
-				std::cout << "Serialized msg:\n";
-				std::string serMSG = msg.serialize();
-				std::cout << serMSG << "\n";
-			} catch (const std::exception& e) {
-				std::cerr << "Error: " << e.what() << "\n";
-	}
-			close(client_fd); // at this point we are taking one message and closing the fd
-		}
-	}
 
 	irc_server.Run();	
 	return (0);
