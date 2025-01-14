@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/13 11:42:25 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/14 14:39:15 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -247,10 +247,10 @@ void Server::User(Client& client, const std::string& message)
 	std::istringstream stream(message);
 	std::string command, username, hostname, servername, realname;
 
-	stream >> command >> username >> hostname >> servername >> realname;
+	stream >> command >> username >> hostname >> servername;
 	getline(stream, realname);
-	if(!realname.empty() && realname[0] == ':')
-		realname = realname.substr(1);
+	if(!realname.empty() && realname[0] == ' ')
+		realname = realname.substr(2);
 	if (username.empty())
 	{
 		SendToClient(client, ":server-name 461 * USER :Not enough parameters\r\n");
@@ -258,6 +258,7 @@ void Server::User(Client& client, const std::string& message)
 	}
 	client.setUser(username);
 	client.setRealname(realname);
+	std::cout << realname << std::endl;
 }
 
 void Server::Ping(Client& client, const std::string& message)
