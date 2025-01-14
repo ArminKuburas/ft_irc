@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/13 14:49:22 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/14 11:11:38 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,12 +31,13 @@ Server::Server(int port, std::string password)
 
 void Server::initializeCommandHandlers()
 {
-	_commands["CAP"] = [this](Client& client, const std::string& message)  {Cap(client, message); };
-	_commands["NICK"] = [this](Client& client, const std::string& message) {Nick(client, message); };
-	_commands["USER"] = [this](Client& client, const std::string& message) {User(client, message); };
-	_commands["PING"] = [this](Client& client, const std::string& message) {Ping(client, message); };
-	_commands["MODE"] = [this](Client& client, const std::string& message) {Mode(client, message); };
-	_commands["PRIVMSG"] = [this](Client& client, const std::string& message) {Priv(client, message); };
+	_commands["CAP"] = [this](Client& client, const std::string& message) 		 {Cap(client, message); };
+	_commands["NICK"] = [this](Client& client, const std::string& message) 		{Nick(client, message); };
+	_commands["USER"] = [this](Client& client, const std::string& message) 		{User(client, message); };
+	_commands["PING"] = [this](Client& client, const std::string& message) 		{Ping(client, message); };
+	_commands["MODE"] = [this](Client& client, const std::string& message) 		{Mode(client, message); };
+	_commands["PRIVMSG"] = [this](Client& client, const std::string& message) 	{Priv(client, message); };
+	_commands["QUIT"] = [this](Client& client, const std::string& message) 		{Quit(client, message); };
 }
 
 Server::~Server()
@@ -337,13 +338,25 @@ void Server::Priv(Client& client, const std::string& message)
 	{
 		std::string formattedMessage = ":" + client.getNick() + " PRIVMSG " + target + " :" + messageContent + "\r\n";
 		SendToClient(*it, formattedMessage);
-		std::cout << formattedMessage;
 	}
 	else
 		SendToClient(client, "ERR_NOSUCHNICK " + target + " :No such nick/channel\r\n");
 }
 
-// void Server::Quit(Client& client, const std::string& message)
-// {
-	
-// }
+void Server::Quit(Client& client, const std::string& message)
+{
+	std::string quitMessage = "Client has disconnected";
+	if (!message.empty())
+	{
+		quitMessage = message;
+		if (quitMessage[0] == ':')
+			quitMessage = quitMessage.substr(1);
+	}
+	std::string quitBroadcast = ":" + client.getNick() + " QUIT :" + quitMessage + "\r\n";
+	for (auto& c : _clients)
+	{
+		if (c.getNick() != client.getNick())
+			SendToClient(c, quitBroadcast);
+	}
+	std::cout << "Client " << client.getNick() << " has disconnected\n";
+}
