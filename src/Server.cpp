@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/14 15:45:13 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/15 14:26:09 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -307,24 +307,36 @@ void Server::Mode(Client& client, const std::string& message)
 void Server::Join(Client& client, const std::string& message)
 {
 	std::istringstream stream(message);
-	// SendToClient(client, message + "\n");
 	std::string command, channel, key;
 	// command is JOIN
 	// channel is given by user starting with #
 	// key is optional, but must match what the server stablished
 	
+	// need to parse when the user inputs a channel name without '#'
 	stream >> command >> channel >> key;
 	
+	// when there is no available channel this clause enters in effect
 	if (channel.empty())
 	{
 		SendToClient(client, ": soon we are going to have channels " + command + " " + channel + " " +key + "\n" );
 		// create channel
+		Channel newChannel(channel, "na", false, false);
+		_channels.emplace(channel, newChannel);
+		newChannel.addMember(&client);		
 	}
-	for (auto it = _channels.begin(); it != _channels.end(); ++it)
+
+	// the following happens when we have at least one channel running
+	// check if channel exists
+	auto it = _channels.find(channel);
+	if (it != _channels.end())
 	{
-		if (it->getName() == channel)
-		{
-			//joining point
-		}
+		SendToClient(client, "we found an existing channel, next we need to listen\n");
+		it->second.addMember(&client); // channel exists and we are purely adding member
+	}
+	else
+	{
+		Channel createChannel(channel, "na" , false, false);
+		_channels.emplace(channel, createChannel);
+		createChannel.addMember(&client);
 	}
 }

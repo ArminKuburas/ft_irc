@@ -23,45 +23,54 @@ Channel::~Channel()
 	
 }
 
-Channel::Channel( const Channel& ref )
-{
-	
-}
+// Channel::Channel( const Channel& ref )
+// {
+// 	setName(ref._name);
+// 	setTopic(ref._topic);
+// 	setPrivate(ref._IsPrivate);
+// 	setInviteOnly(ref._isInviteOnly);
+// }
 
-Channel &Channel::operator=( const Channel& ref )
-{
-
-}
+// Channel &Channel::operator=( const Channel& ref )
+// {
+// 	if (*this == ref)
+// 		return (*this);
+// 	setName(ref._name);
+// 	setTopic(ref._topic);
+// 	setPrivate(ref._isPrivate);
+// 	setInviteOnly(ref._isInviteOnly);
+// 	return (*this);
+// }
 
 // Getters
-const std::string& Channel::getName() const
+const std::string Channel::getName() const
 {
-	return (this->_name);
+	return (_name);
 }
 
-const std::string& Channel::getTopic() const
+const std::string Channel::getTopic() const
 {
-	return (this->_topic);
+	return (_topic);
 }
 
-const std::set<Client*>& Channel::getMembers() const
+const std::set<Client*> Channel::getMembers() const
 {
-	return (this->_members);
+	return (_members);
 }
 
-const std::set<Client*>& Channel::getOperators() const
+const std::set<Client*> Channel::getOperators() const
 {
-	return (this->_operators);
+	return (_operators);
 }
 
-const bool& getIsPrivate() const
+const bool& Channel::getIsPrivate() const
 {
-	return (this->_isPrivate);
+	return (_isPrivate);
 }
 
-const bool& getIsInviteOnly() const
+const bool& Channel::getIsInviteOnly() const
 {
-	return (this->_isInviteOnly);
+	return (_isInviteOnly);
 }
 
 // Setters
@@ -77,74 +86,59 @@ void Channel::setTopic( const std::string& newTopic )
 
 void Channel::setPrivate( bool isPrivate )
 {
-	if (getIsPrivate() == false)
-	{
-		// need to message the client that it was successful and it is now private
-		_isPrivate = true;
-	}
-	else // switch back
-	{
-		_isPrivate = false
-	}
+	_isPrivate = isPrivate;
 }
 
 void Channel::setInviteOnly( bool isInviteOnly )
 {
-	if (getIsInviteOnly() == false)
-	{
-		// need to message the client that it was sucessful and it is now private
-		_isInviteOnly = true;
-	}
-	else // switch back
-	{
-		_isInviteOnly = false;
-	}
+	_isInviteOnly = isInviteOnly;
 }
 
 // Membership management
-bool Channel::addMember(Client* client)
+void Channel::addMember(Client* client)
 {
 	// if the member is the first to enter the server, we shall call addOperator
 	if (_members.empty())
-	{
 		addOperator(client);
-		_members.emplace(client);
-	}
-	else
-	{
-		_members.emplace(client);
-	}
+	_members.emplace(client);
 }
 
 bool Channel::removeMember(Client* client)
 {
-	for (auto it = _members.begin(); it != _members.end(); ++it)
+	auto it = _operators.find(client);
+	if (it != _operators.end())
 	{
-		if ((it->getNick() == client->getNick() || it->getUser() == client->getNick()) && (it->getClientFd() == client->getClientFd()))
-		{
-			_members.erase(client);
-			return (true);
-		}
+		_operators.erase(it);
+		return (true);
 	}
 	return (false);
 }
 
 bool Channel::addOperator(Client* client)
 {
-	_operators.emplace(client);
-}
-
-bool removeOperator(Client* client)
-{
 	for (auto it = _operators.begin(); it != _operators.end(); ++it)
 	{
-		if ((it->getNick() == client->getNick() || it->getUser() == client->getNick()) && (it->getClientFd() == client->getClientFd()))
+		Client* existingClient = *it;
+
+		if ((existingClient->getNick() == client->getNick() || existingClient->getUser() == client->getNick()) && (existingClient->getClientFd() == client->getClientFd()))
 		{
-			_operators.erase(client);
 			return (true);
 		}
 	}
+	_operators.emplace(client);
 	return (false);
+}
+
+bool Channel::removeOperator(Client* client)
+{
+	auto it = _operators.find(client);
+	if (it != _operators.end())
+	{
+		_operators.erase(it);
+		return (true);
+	}
+	return (false);
+
 }
 
 // Channel settings
@@ -155,7 +149,9 @@ bool Channel::isMember(Client* client) const
 {
 	for (auto it = _members.begin(); it != _members.end(); ++it)
 	{
-		if ((it->getNick() == client->getNick() || it->getUser() == client->getNick()) && (it->getClientFd() == client->getClientFd()))
+		Client* possibleMember = *it;
+
+		if ((possibleMember->getNick() == client->getNick() || possibleMember->getUser() == client->getNick()) && (possibleMember->getClientFd() == client->getClientFd()))
 			return (true);
 	}
 	return (false);
@@ -165,7 +161,9 @@ bool Channel::isOperator(Client* client) const
 {
 	for (auto it = _operators.begin(); it != _operators.end(); ++it)
 	{
-		if ((it->getNick() == client->getNick() || it->getUser() == client->getNick()) && (it->getClientFd() == client->getClientFd()))
+		Client* possibleOperator = *it;
+		
+		if ((possibleOperator->getNick() == client->getNick() || possibleOperator->getUser() == client->getNick()) && (possibleOperator->getClientFd() == client->getClientFd()))
 			return (true);
 	}
 	return (false);

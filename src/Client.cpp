@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: fdessoy- <fdessoy-@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/13 11:30:23 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/15 14:56:47 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,7 +78,7 @@ void	Client::setNick( std::string nick )
 	this->_nick = nick;
 }
 
-std::string	Client::getNick()
+const std::string	Client::getNick() const
 {
 	return (this->_nick);
 }
@@ -88,7 +88,7 @@ void	Client::setUser( std::string user )
 	this->_user = user;
 }
 
-std::string	Client::getUser()
+const std::string	Client::getUser() const
 {
 	return (this->_user);
 }
@@ -98,7 +98,7 @@ void	Client::setRealname( std::string realname )
 	this->_realname = realname;
 }
 
-std::string	Client::getRealname()
+const std::string	Client::getRealname() const
 {
 	return (this->_realname);
 }

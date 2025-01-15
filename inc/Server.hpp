@@ -39,7 +39,7 @@ class Server
 		int										_serverSocket;
 		struct sockaddr_in						_serverAddr;
 		std::vector<Client>						_clients;
-		std::set<Channel> 						_channels;
+		std::map<std::string, Channel> 			_channels;
 		std::map<std::string, CommandHelper>	_commands;
 		
 	public:
