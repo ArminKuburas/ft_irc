@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/18 11:18:19 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/14 15:34:49 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/15 11:38:22 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,26 +28,29 @@ class Channel
 		std::set<Client>		_operators;
 		bool 					_isPrivate;
 		bool					_isInviteOnly;
+		void 					setName( const std::string& name );
 	public:
 		Channel(const std::string &name, const std::string &topic, bool isPrivate, bool isInviteOnly);
+
+		// Getters
 		const std::string& getName() const;
 		const std::string& getTopic() const;
 		const std::set<Client*>& getMembers() const;
 		const std::set<Client*>& getOperators() const;
+		const bool& getIsPrivate() const;
+		const bool& getIsInviteOnly() const;
 
 		// Setters
 		void setTopic(const std::string& newTopic);
+		void setPrivate(bool isPrivate);
+		void setInviteOnly(bool isInviteOnly);
 
 		// Membership management
 		bool addMember(Client* client);
 		bool removeMember(Client* client);
 		bool addOperator(Client* client);
 		bool removeOperator(Client* client);
-
-		// Channel settings
-		void setPrivate(bool isPrivate);
-		void setInviteOnly(bool isInviteOnly);
-
+		
 		// Utility
 		bool isMember(Client* client) const;
 		bool isOperator(Client* client) const;
