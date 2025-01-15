@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/15 14:26:09 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/15 15:36:57 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,13 @@ void Server::initializeCommandHandlers()
 	_commands["PING"] = [this](Client& client, const std::string& message) {Ping(client, message); };
 	_commands["MODE"] = [this](Client& client, const std::string& message) {Mode(client, message); };
 	_commands["JOIN"] = [this](Client& client, const std::string& message) {Join(client, message); };
+	_commands["CAP"] = [this](Client& client, const std::string& message) 		 {Cap(client, message); };
+	_commands["NICK"] = [this](Client& client, const std::string& message) 		{Nick(client, message); };
+	_commands["USER"] = [this](Client& client, const std::string& message) 		{User(client, message); };
+	_commands["PING"] = [this](Client& client, const std::string& message) 		{Ping(client, message); };
+	_commands["MODE"] = [this](Client& client, const std::string& message) 		{Mode(client, message); };
+	_commands["PRIVMSG"] = [this](Client& client, const std::string& message) 	{Priv(client, message); };
+	_commands["QUIT"] = [this](Client& client, const std::string& message) 		{Quit(client, message); };
 }
 
 Server::~Server()
@@ -237,10 +244,10 @@ void Server::User(Client& client, const std::string& message)
 	std::istringstream stream(message);
 	std::string command, username, hostname, servername, realname;
 
-	stream >> command >> username >> hostname >> servername >> realname;
+	stream >> command >> username >> hostname >> servername;
 	getline(stream, realname);
-	if(!realname.empty() && realname[0] == ':')
-		realname = realname.substr(1);
+	if(!realname.empty() && realname[0] == ' ')
+		realname = realname.substr(2);
 	if (username.empty())
 	{
 		SendToClient(client, ":server-name 461 * USER :Not enough parameters\r\n");
@@ -248,6 +255,7 @@ void Server::User(Client& client, const std::string& message)
 	}
 	client.setUser(username);
 	client.setRealname(realname);
+	std::cout << realname << std::endl;
 }
 
 void Server::Ping(Client& client, const std::string& message)

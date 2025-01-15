@@ -31,6 +31,8 @@ class Channel;
 
 using CommandHelper = std::function<void(Client&, const std::string&)>;
 
+using CommandHelper = std::function<void(Client&, const std::string&)>;
+
 class Server
 {
 	private:
@@ -73,12 +75,13 @@ class Server
 		// Command handlers
 		void Ping(Client& client, const std::string& message);
 		void Pong(Client& client, const std::string& message);
-		void Exit(Client& client, const std::string& message);
 		void Cap(Client& client, const std::string& message);
 		void Nick(Client& client, const std::string& message);
 		void User(Client& client, const std::string& message);
 		void Mode(Client& client, const std::string& message);
 		void Join(Client& client, const std::string& message);
+		void Quit(Client& client, const std::string& message);
+		void Priv(Client& client, const std::string& message);
 
 		void initializeCommandHandlers();
 		std::vector<std::string> splitMessages(const std::string& message);
