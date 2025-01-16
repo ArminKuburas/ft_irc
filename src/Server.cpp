@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fdessoy- <fdessoy-@student.42.fr>          +#+  +:+       +#+        */
+/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/15 15:36:57 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/16 13:06:22 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 /*  ROFL:ROFL:ROFL:ROFL 													  */
 /*          _^___      										 				  */
 /* L     __/   [] \    										 			      */
-/* LOL===__        \   			MY ROFLCOPTER GOES BRRRRRR				  	  */
+/* LOL===__        \   			MY ROFLCOPTER GOES BRRRRRR					  */
 /* L      \________]  					by fdessoy-				  			  */
 /*         I   I     			(fdessoy-@student.hive.fi)				  	  */
 /*        --------/   										  				  */
@@ -31,18 +31,13 @@ Server::Server(int port, std::string password)
 
 void Server::initializeCommandHandlers()
 {
-	_commands["CAP"] = [this](Client& client, const std::string& message)  {Cap(client, message); };
-	_commands["NICK"] = [this](Client& client, const std::string& message) {Nick(client, message); };
-	_commands["USER"] = [this](Client& client, const std::string& message) {User(client, message); };
-	_commands["PING"] = [this](Client& client, const std::string& message) {Ping(client, message); };
-	_commands["MODE"] = [this](Client& client, const std::string& message) {Mode(client, message); };
-	_commands["JOIN"] = [this](Client& client, const std::string& message) {Join(client, message); };
-	_commands["CAP"] = [this](Client& client, const std::string& message) 		 {Cap(client, message); };
+	_commands["CAP"] = [this](Client& client, const std::string& message)		{Cap(client, message); };
 	_commands["NICK"] = [this](Client& client, const std::string& message) 		{Nick(client, message); };
 	_commands["USER"] = [this](Client& client, const std::string& message) 		{User(client, message); };
 	_commands["PING"] = [this](Client& client, const std::string& message) 		{Ping(client, message); };
 	_commands["MODE"] = [this](Client& client, const std::string& message) 		{Mode(client, message); };
 	_commands["PRIVMSG"] = [this](Client& client, const std::string& message) 	{Priv(client, message); };
+	_commands["JOIN"] = [this](Client& client, const std::string& message)		{Join(client, message); };
 	_commands["QUIT"] = [this](Client& client, const std::string& message) 		{Quit(client, message); };
 }
 
@@ -312,39 +307,114 @@ void Server::Mode(Client& client, const std::string& message)
 	}
 }
 
+void Server::Priv(Client& client, const std::string& message)
+{
+	std::stringstream stream(message);
+	std::string command, target, messageContent;
+	stream >> command >> target;
+	if (target.empty())
+	{
+		SendToClient(client, "ERR_NEEDMOREPARAMS PRIVMSG :Not enough parameters\r\n");
+		return;
+	}
+
+	std::getline(stream, messageContent);
+	if (!messageContent.empty() && messageContent[0] == ' ')
+		messageContent = messageContent.substr(1);
+	if (!messageContent.empty() && messageContent[0] == ':')
+        messageContent = messageContent.substr(1);
+
+	if (target[0] == '#')
+	{
+		auto it = _channels.find(target);
+		if (it == _channels.end())
+		{
+			SendToClient(client, "ERR_NOSUCHCHANNEL " + target + " :No such channel\r\n");
+			return ;
+		}
+		sendMessageToChannel(target, ":" + client.getNick() + " PRIVMSG " + target + " :" + messageContent + "\r\n", &client);
+	}
+	else
+	{
+		auto it = std::find_if(_clients.begin(), _clients.end(), [&target](Client& c) {return c.getNick() == target; });
+		
+		if (it != _clients.end())
+		{
+			std::string formattedMessage = ":" + client.getNick() + " PRIVMSG " + target + " :" + messageContent + "\r\n";
+			SendToClient(*it, formattedMessage);
+		}
+		else
+			SendToClient(client, "ERR_NOSUCHNICK " + target + " :No such nick/channel\r\n");
+	}
+}
+
+void Server::Quit(Client& client, const std::string& message)
+{
+	std::string quitMessage = "Client has disconnected";
+	if (!message.empty())
+	{
+		quitMessage = message;
+		if (quitMessage[0] == ':')
+			quitMessage = quitMessage.substr(1);
+	}
+	std::string quitBroadcast = ":" + client.getNick() + " QUIT :" + quitMessage + "\r\n";
+	for (auto& c : _clients)
+	{
+		if (c.getNick() != client.getNick())
+			SendToClient(c, quitBroadcast);
+	}
+	std::cout << "Client " << client.getNick() << " has disconnected\n";
+}
+
 void Server::Join(Client& client, const std::string& message)
 {
 	std::istringstream stream(message);
 	std::string command, channel, key;
-	// command is JOIN
-	// channel is given by user starting with #
-	// key is optional, but must match what the server stablished
 	
 	// need to parse when the user inputs a channel name without '#'
 	stream >> command >> channel >> key;
 	
-	// when there is no available channel this clause enters in effect
-	if (channel.empty())
+	// simple error check
+	if (channel.empty() || channel[0] != '#')
 	{
-		SendToClient(client, ": soon we are going to have channels " + command + " " + channel + " " +key + "\n" );
-		// create channel
-		Channel newChannel(channel, "na", false, false);
-		_channels.emplace(channel, newChannel);
-		newChannel.addMember(&client);		
+		// ERR_BADCHANMASK
+		SendToClient(client, ":Server 476 " + client.getNick() + " " + channel + ": Invalid channel name\r\n");
+		return ;
 	}
 
-	// the following happens when we have at least one channel running
-	// check if channel exists
 	auto it = _channels.find(channel);
-	if (it != _channels.end())
+	if (it == _channels.end()) // we did not find any channel
 	{
-		SendToClient(client, "we found an existing channel, next we need to listen\n");
-		it->second.addMember(&client); // channel exists and we are purely adding member
+		Channel newChannel(channel, "na", false, false);
+		_channels.emplace(channel, newChannel);
+		it = _channels.find(channel);
 	}
-	else
+	
+	it->second.addMember(&client);
+	SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
+	std::string namesList = ":Server 353 " + client.getNick() + " = " + channel + " :";
+	for (Client* member : it->second.getMembers())
 	{
-		Channel createChannel(channel, "na" , false, false);
-		_channels.emplace(channel, createChannel);
-		createChannel.addMember(&client);
+		namesList += member->getNick() + " ";
+	}
+	namesList += "\r\n";
+	SendToClient(client, namesList);
+	SendToClient(client, ": Server 366 " + client.getNick() + " " + channel + " End of /NAMES list\r\n");
+	if (it->second.getTopic() == "na") // no topic
+        SendToClient(client, ":Server 332 " + client.getNick() + " " + channel + " :" + it->second.getTopic() + "\r\n");
+	else // sends topic
+        SendToClient(client, ":Server 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
+}
+
+void Server::sendMessageToChannel(const std::string& channelName, const std::string& message, Client* sender)
+{
+	auto it = _channels.find(channelName);
+	if (it == _channels.end()) // couldn't find channel name
+		return ;
+	
+	for (Client* member : it->second.getMembers())
+	{
+		if (member != sender)
+			SendToClient(*member, message);
 	}
 }

@@ -64,12 +64,11 @@ class Server
 
 		// public methods
 		void portConversion( std::string port );
-
 		void Run();
 		void AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen );
 		void BroadcastMessage(std:: string &messasge);
 		void SendToClient(Client& client, const std::string& message);
-
+		void sendMessageToChannel(const std::string& channelName, const std::string& message, Client* sender);
 		void handleMessage(Client& client, const std::string& message);
 
 		// Command handlers
