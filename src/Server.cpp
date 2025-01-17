@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/16 13:06:22 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/17 13:30:04 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -392,18 +392,18 @@ void Server::Join(Client& client, const std::string& message)
 	
 	it->second.addMember(&client);
 	SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
-	std::string namesList = ":Server 353 " + client.getNick() + " = " + channel + " :";
+	std::string namesList = "Server 353 " + client.getNick() + " = " + channel + " :";
 	for (Client* member : it->second.getMembers())
 	{
 		namesList += member->getNick() + " ";
 	}
 	namesList += "\r\n";
 	SendToClient(client, namesList);
-	SendToClient(client, ": Server 366 " + client.getNick() + " " + channel + " End of /NAMES list\r\n");
+	SendToClient(client, "Server 366 " + client.getNick() + " " + channel + " End of /NAMES list\r\n");
 	if (it->second.getTopic() == "na") // no topic
-        SendToClient(client, ":Server 332 " + client.getNick() + " " + channel + " :" + it->second.getTopic() + "\r\n");
+        SendToClient(client, "Server 332 " + client.getNick() + " " + channel + " :" + it->second.getTopic() + "\r\n");
 	else // sends topic
-        SendToClient(client, ":Server 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
+        SendToClient(client, "Server 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
 }
 
 void Server::sendMessageToChannel(const std::string& channelName, const std::string& message, Client* sender)
