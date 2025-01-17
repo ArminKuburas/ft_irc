@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/17 14:30:35 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/17 14:34:37 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -111,6 +111,7 @@ void	Server::Run()
                         continue;
                     }
                     this->_clients.emplace_back(client_fd, client_addr);
+					// irssi client needs set nick, user, and setRealname
 					_clients.setNick( "Panda" + i );
 					_clients.setUser( "User" + i );
 					_clients.setRealname( "Bob" + i );
