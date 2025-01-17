@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/17 13:30:04 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/17 14:30:35 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,9 +110,11 @@ void	Server::Run()
                         perror("accept failed");
                         continue;
                     }
-
                     this->_clients.emplace_back(client_fd, client_addr);
-                    fds[nfds].fd = client_fd;
+					_clients.setNick( "Panda" + i );
+					_clients.setUser( "User" + i );
+					_clients.setRealname( "Bob" + i );
+					fds[nfds].fd = client_fd;
                     fds[nfds].events = POLLIN;
                     const char * welcome_message = "Welcome to the server!\n";
                     send(client_fd, welcome_message, strlen(welcome_message), 0);
@@ -392,7 +394,7 @@ void Server::Join(Client& client, const std::string& message)
 	
 	it->second.addMember(&client);
 	SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
-	std::string namesList = "Server 353 " + client.getNick() + " = " + channel + " :";
+	std::string namesList = "Server 353 " + client.getNick() + " = " + channel + " :"; // this is not working properly
 	for (Client* member : it->second.getMembers())
 	{
 		namesList += member->getNick() + " ";
