@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: fdessoy- <fdessoy-@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:45 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/09 05:20:21 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/10 14:44:53 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,7 @@
 
 #include "../inc/Server.hpp"
 #include "../inc/Client.hpp"
+#include "../inc/Message.hpp"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -31,7 +32,6 @@
 #include <cstring>
 #include <fcntl.h>
 #include <poll.h>
-# include "Message.hpp"
 
 
 bool	isDigit(std::string str)
