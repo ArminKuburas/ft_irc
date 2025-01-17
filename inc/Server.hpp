@@ -76,6 +76,7 @@ class Server
 		void Mode(Client& client, const std::string& message);
 		void Quit(Client& client, const std::string& message);
 		void Priv(Client& client, const std::string& message);
+		void Join(Client& client, const std::string& message);
 
 		void initializeCommandHandlers();
 		std::vector<std::string> splitMessages(const std::string& message);

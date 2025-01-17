@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/14 14:47:35 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/16 11:47:18 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,7 @@ void Server::initializeCommandHandlers()
 	_commands["MODE"] = [this](Client& client, const std::string& message) 		{Mode(client, message); };
 	_commands["PRIVMSG"] = [this](Client& client, const std::string& message) 	{Priv(client, message); };
 	_commands["QUIT"] = [this](Client& client, const std::string& message) 		{Quit(client, message); };
+	_commands["JOIN"] = [this](Client& client, const std::string& message) 		{Join(client, message); };
 }
 
 Server::~Server()
@@ -241,6 +242,15 @@ void Server::Nick(Client& client, const std::string& message)
 	}
 	client.setNick(nickname);
 	SendToClient(client, ":server-name 001 " + nickname + " :Welcome to the IRC network, " + nickname + "\r\n");
+}
+
+void Server::Join(Client& client, const std::string& message){
+	std::cout << "JOIN command received" << std::endl;
+	std::string nickname;
+	std::string command;
+	std::istringstream stream(message);
+	stream >> command >> nickname;
+	SendToClient(client, ":server-name 332 " + client.getNick() + " :Welcome to the server" + "/n/r");
 }
 
 void Server::User(Client& client, const std::string& message)
