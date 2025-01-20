@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/17 14:34:37 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/20 12:08:34 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,23 +105,18 @@ void	Server::Run()
                     // New client connection
                     struct sockaddr_in client_addr;
                     socklen_t client_addr_len = sizeof(client_addr);
+									
                     int client_fd = accept(this->_serverSocket, (struct sockaddr*)&client_addr, &client_addr_len);
                     if (client_fd < 0) {
                         perror("accept failed");
                         continue;
                     }
                     this->_clients.emplace_back(client_fd, client_addr);
-					// irssi client needs set nick, user, and setRealname
-					_clients.setNick( "Panda" + i );
-					_clients.setUser( "User" + i );
-					_clients.setRealname( "Bob" + i );
 					fds[nfds].fd = client_fd;
                     fds[nfds].events = POLLIN;
-                    const char * welcome_message = "Welcome to the server!\n";
-                    send(client_fd, welcome_message, strlen(welcome_message), 0);
-                    ++nfds;
-
-                    std::cout << "New client connected: " << client_fd << std::endl;
+					
+                    std::cout << "[NEXUS] New client connected: " << client_fd << std::endl;
+					++nfds;
                 } else {
                     char buffer[1024];
                     ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer) - 1);
@@ -137,12 +132,12 @@ void	Server::Run()
                         // Broadcast message to all clients
                         buffer[bytes_read] = '\0';
 						std::string receivedData(buffer);
-						std::cout << "Received message from client " << fds[i].fd << ": " << receivedData;
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
 						if (client != _clients.end()) {
 							std::vector<std::string> messages = splitMessages(receivedData);
 							for (const auto& message : messages)
 							{
+								std::cout  << fds[i].fd << " >> " << message << std::endl;
 								handleMessage(*client, message);
 							}
 						}
@@ -210,20 +205,18 @@ void Server::SendToClient(Client& client, const std::string& message)
 		perror("send failed");
 	}
 	else {
-		std::cout << "Sent message: " << message <<" to client " << client.getClientFd() << ": " << message;
+		std::cout << client.getClientFd() << " << " << message;
 	}
 }
 
 void Server::Cap(Client& client, const std::string& message)
 {
 	(void)message;
-	std::cout << "CAP command received" << std::endl;
 	SendToClient(client, ":server-name CAP * LS :*\r\n");
 }
 
 void Server::Nick(Client& client, const std::string& message)
 {
-	std::cout << "NICK command received" << std::endl;
 	std::string nickname;
 	std::string command;
 	std::istringstream stream(message);
@@ -233,12 +226,11 @@ void Server::Nick(Client& client, const std::string& message)
 		return;
 	}
 	client.setNick(nickname);
-	SendToClient(client, ":server-name 001 " + nickname + " :Welcome to the IRC network, " + nickname + "\r\n");
+	SendToClient(client, ":server-name 001 " + client.getNick() + " :Welcome to the IRC network, " + client.getNick() + "\r\n");
 }
 
 void Server::User(Client& client, const std::string& message)
 {
-	std::cout << "USER command received" << std::endl;
 	std::istringstream stream(message);
 	std::string command, username, hostname, servername, realname;
 
@@ -253,7 +245,7 @@ void Server::User(Client& client, const std::string& message)
 	}
 	client.setUser(username);
 	client.setRealname(realname);
-	std::cout << realname << std::endl;
+	//std::cout << realname << std::endl;
 }
 
 void Server::Ping(Client& client, const std::string& message)

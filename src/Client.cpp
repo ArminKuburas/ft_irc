@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fdessoy- <fdessoy-@student.42.fr>          +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/15 15:37:05 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/20 11:08:53 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,7 +57,11 @@ void	Client::setClientFd( int clientFd )
 	this->_clientFd = clientFd;
 }
 
-
+					// char buffer[1024];
+                    // ssize_t bytes_read = read(fds[nfds].fd, buffer, sizeof(buffer) - 1);
+					// buffer[bytes_read] = '\0';
+					// std::string receivedData(buffer);
+					// std::cout  << fds[nfds].fd << " >> " << receivedData;
 int	Client::getClientFd() const
 {
 	return (this->_clientFd);
@@ -126,4 +130,11 @@ std::string Client::getModes() const
 		modes += mode;
 	}
 	return (modes);
+}
+
+int Client::registerUser(){
+	std::cout << "This is a test message" << std::endl;
+	return 0;
+
+	
 }

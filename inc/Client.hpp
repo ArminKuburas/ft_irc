@@ -54,4 +54,7 @@ class Client
 		void	addMode(char mode);
 		void	removeMode(char mode);
 		std::string getModes() const;
+
+		// methods
+		int registerUser();
 };
