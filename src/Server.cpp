@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/20 12:08:34 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/20 12:31:01 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -115,7 +115,7 @@ void	Server::Run()
 					fds[nfds].fd = client_fd;
                     fds[nfds].events = POLLIN;
 					
-                    std::cout << "[NEXUS] New client connected: " << client_fd << std::endl;
+                    std::cout << "[" + this->_name +"] New client connected: " << client_fd << std::endl;
 					++nfds;
                 } else {
                     char buffer[1024];
@@ -194,7 +194,7 @@ void Server::handleMessage(Client& client, const std::string& message)
 	}
 	else
 	{
-		SendToClient(client, ":server-name 421 * " + command + " :Unknown command\r\n");
+		SendToClient(client, ":" +this->_name + " 421 * " + command + " :Unknown command\r\n");
 	}
 }
 
@@ -212,7 +212,7 @@ void Server::SendToClient(Client& client, const std::string& message)
 void Server::Cap(Client& client, const std::string& message)
 {
 	(void)message;
-	SendToClient(client, ":server-name CAP * LS :*\r\n");
+	SendToClient(client, ":" +this->_name + " CAP * LS :*\r\n");
 }
 
 void Server::Nick(Client& client, const std::string& message)
@@ -222,11 +222,11 @@ void Server::Nick(Client& client, const std::string& message)
 	std::istringstream stream(message);
 	stream >> command >> nickname;
 	if (nickname.empty()) {
-		SendToClient(client, ":server-name 431 * NICK :No nickname given\r\n");
+		SendToClient(client, ":" +this->_name + " 431 * NICK :No nickname given\r\n");
 		return;
 	}
 	client.setNick(nickname);
-	SendToClient(client, ":server-name 001 " + client.getNick() + " :Welcome to the IRC network, " + client.getNick() + "\r\n");
+	SendToClient(client, ":" +this->_name + " 001 " + client.getNick() + " :Welcome to the IRC network, " + client.getNick() + "\r\n");
 }
 
 void Server::User(Client& client, const std::string& message)
@@ -240,7 +240,7 @@ void Server::User(Client& client, const std::string& message)
 		realname = realname.substr(2);
 	if (username.empty())
 	{
-		SendToClient(client, ":server-name 461 * USER :Not enough parameters\r\n");
+		SendToClient(client, ":" +this->_name + " 461 * USER :Not enough parameters\r\n");
 		return;
 	}
 	client.setUser(username);
