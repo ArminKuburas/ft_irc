@@ -36,9 +36,9 @@ class Client
 		socklen_t 	getClientAddrLen();
 		int 		getClientFd() const;
 		struct pollfd *getFds();
-		std::string	getNick();
-		std::string	getUser();
-		std::string	getRealname();
+		const std::string	getNick() const;
+		const std::string	getUser() const;
+		const std::string	getRealname() const;
 
 		// setters
 		void	setClientAddr( sockaddr_in clientAddr );
