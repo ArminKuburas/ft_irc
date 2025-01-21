@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/21 10:43:48 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/21 11:06:09 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -229,10 +229,24 @@ void Server::Nick(Client& client, const std::string& message)
 		SendToClient(client, ":" +this->_name + " 431 * NICK :No nickname given\r\n");
 		return;
 	}
+	// Check if nickname is already in use
+    for (const auto& existingClient : _clients) {
+        if (existingClient.getNick() == nickname) {
+            SendToClient(client, ":" + this->_name + " 433 * " + nickname + " :Nickname is already in use\r\n");
+            return;
+        }
+    }
+
+	// Check that the user has not been registered yet
+	bool registered = client.getNick().empty();
+
+	// set nick
 	client.setNick(nickname);
+	SendToClient(client, ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " NICK " + client.getNick() + "\r\n");
 	
-	SendToClient(client, ":" + client.getNick() + "!" + client.getUser() + "@" + "oulut.fi" + " NICK " + client.getNick() + "\r\n");
-	SendToClient(client, ":" +this->_name + " 001 " + client.getNick() + " :Welcome to the IRC network, " + client.getNick() + "\r\n");
+	// welcome new users
+	if(registered)
+		SendToClient(client, ":" +this->_name + " 001 " + client.getNick() + " :Welcome to the IRC network, " + client.getNick() + "\r\n");
 }
 
 void Server::User(Client& client, const std::string& message)

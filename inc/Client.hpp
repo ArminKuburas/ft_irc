@@ -12,11 +12,13 @@
 
 #include "Server.hpp"
 #include <set>
+#include <arpa/inet.h>
 
 class Client
 {
 	private:
 		struct sockaddr_in	_clientAddr;
+		std::string			_client_host;
 		int 				_clientFd;
 		socklen_t			_clientAddrLen;
 		struct pollfd		*_fds;
@@ -33,6 +35,7 @@ class Client
 		
 		// getters
 		sockaddr_in getClientAddr();
+		const std::string	getHost() const;
 		socklen_t 	getClientAddrLen();
 		int 		getClientFd() const;
 		struct pollfd *getFds();

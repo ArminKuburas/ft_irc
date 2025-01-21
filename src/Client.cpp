@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/20 11:08:53 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/21 11:00:46 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,7 @@ Client::Client( int fd, const sockaddr_in& addr )
 {
 	this->_clientFd = fd;
 	this->_clientAddr = addr;
+	this->_client_host = inet_ntoa(_clientAddr.sin_addr);
 }
 
 Client::~Client()
@@ -132,9 +133,6 @@ std::string Client::getModes() const
 	return (modes);
 }
 
-int Client::registerUser(){
-	std::cout << "This is a test message" << std::endl;
-	return 0;
-
-	
+const std::string Client::getHost () const{
+	return this->_client_host;
 }
