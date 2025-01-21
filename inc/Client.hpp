@@ -18,13 +18,13 @@ class Client
 {
 	private:
 		struct sockaddr_in	_clientAddr;
-		std::string			_client_host;
+		std::string			_clientHost;
 		int 				_clientFd;
 		socklen_t			_clientAddrLen;
 		struct pollfd		*_fds;
 		std::string			_nick;
 		std::string			_user;
-		std::string			_realname;
+		std::string			_realName;
 		std::set<char>		_userModes;
 	public:
 		// constructor
