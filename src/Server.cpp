@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/20 12:31:01 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/21 10:43:48 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,16 +105,20 @@ void	Server::Run()
                     // New client connection
                     struct sockaddr_in client_addr;
                     socklen_t client_addr_len = sizeof(client_addr);
-									
+
                     int client_fd = accept(this->_serverSocket, (struct sockaddr*)&client_addr, &client_addr_len);
                     if (client_fd < 0) {
                         perror("accept failed");
                         continue;
                     }
+					// Make the new socket non-blocking
+					int flags = fcntl(client_fd, F_GETFL, 0);
+					fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
+
                     this->_clients.emplace_back(client_fd, client_addr);
 					fds[nfds].fd = client_fd;
                     fds[nfds].events = POLLIN;
-					
+
                     std::cout << "[" + this->_name +"] New client connected: " << client_fd << std::endl;
 					++nfds;
                 } else {
@@ -226,6 +230,8 @@ void Server::Nick(Client& client, const std::string& message)
 		return;
 	}
 	client.setNick(nickname);
+	
+	SendToClient(client, ":" + client.getNick() + "!" + client.getUser() + "@" + "oulut.fi" + " NICK " + client.getNick() + "\r\n");
 	SendToClient(client, ":" +this->_name + " 001 " + client.getNick() + " :Welcome to the IRC network, " + client.getNick() + "\r\n");
 }
 
@@ -292,8 +298,10 @@ void Server::Mode(Client& client, const std::string& message)
 			adding = false;
 		else if (ch == 'i')
 		{
-			if (adding)
+			if (adding){
 				client.addMode(ch);
+				SendToClient(client, ":" + this->_name + " 221 " + client.getNick() + " +i\r\n");
+			}
 			else
 				client.removeMode(ch);
 		}
