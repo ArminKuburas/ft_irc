@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/13 11:30:23 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/01/21 11:12:14 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,7 @@ Client::Client( int fd, const sockaddr_in& addr )
 {
 	this->_clientFd = fd;
 	this->_clientAddr = addr;
+	this->_clientHost = inet_ntoa(_clientAddr.sin_addr);
 }
 
 Client::~Client()
@@ -57,7 +58,11 @@ void	Client::setClientFd( int clientFd )
 	this->_clientFd = clientFd;
 }
 
-
+					// char buffer[1024];
+                    // ssize_t bytes_read = read(fds[nfds].fd, buffer, sizeof(buffer) - 1);
+					// buffer[bytes_read] = '\0';
+					// std::string receivedData(buffer);
+					// std::cout  << fds[nfds].fd << " >> " << receivedData;
 int	Client::getClientFd() const
 {
 	return (this->_clientFd);
@@ -78,7 +83,7 @@ void	Client::setNick( std::string nick )
 	this->_nick = nick;
 }
 
-std::string	Client::getNick()
+const std::string	Client::getNick() const
 {
 	return (this->_nick);
 }
@@ -88,19 +93,19 @@ void	Client::setUser( std::string user )
 	this->_user = user;
 }
 
-std::string	Client::getUser()
+const std::string	Client::getUser() const
 {
 	return (this->_user);
 }
 
 void	Client::setRealname( std::string realname )
 {
-	this->_realname = realname;
+	this->_realName = realname;
 }
 
-std::string	Client::getRealname()
+const std::string	Client::getRealname() const
 {
-	return (this->_realname);
+	return (this->_realName);
 }
 
 bool	Client::hasMode(char mode) const
@@ -126,4 +131,8 @@ std::string Client::getModes() const
 		modes += mode;
 	}
 	return (modes);
+}
+
+const std::string Client::getHost () const{
+	return this->_clientHost;
 }

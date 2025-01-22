@@ -24,20 +24,28 @@
 #include <functional>
 #include <map>
 #include <sstream>
+#include "Channel.hpp"
+
+#define SERVER_NAME "Zorg"
 
 class Client;
+class Channel;
+
+using CommandHelper = std::function<void(Client&, const std::string&)>;
 
 using CommandHelper = std::function<void(Client&, const std::string&)>;
 
 class Server
 {
 	private:
-		int					_port;
-		std::string			_password;
-		int					_serverSocket;
-		struct sockaddr_in	_serverAddr;
-		std::vector<Client>	_clients;
-		std::map<std::string, CommandHelper> _commands;
+		int										_port;
+		std::string								_name = SERVER_NAME;
+		std::string								_password;
+		int										_serverSocket;
+		struct sockaddr_in						_serverAddr;
+		std::vector<Client>						_clients;
+		std::map<std::string, Channel> 			_channels;
+		std::map<std::string, CommandHelper>	_commands;
 		
 	public:
 		// constructor
@@ -59,12 +67,11 @@ class Server
 
 		// public methods
 		void portConversion( std::string port );
-
 		void Run();
 		void AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen );
 		void BroadcastMessage(std:: string &messasge);
 		void SendToClient(Client& client, const std::string& message);
-
+		void sendMessageToChannel(const std::string& channelName, const std::string& message, Client* sender);
 		void handleMessage(Client& client, const std::string& message);
 
 		// Command handlers
@@ -74,6 +81,7 @@ class Server
 		void Nick(Client& client, const std::string& message);
 		void User(Client& client, const std::string& message);
 		void Mode(Client& client, const std::string& message);
+		void Join(Client& client, const std::string& message);
 		void Quit(Client& client, const std::string& message);
 		void Priv(Client& client, const std::string& message);
 		void Join(Client& client, const std::string& message);
