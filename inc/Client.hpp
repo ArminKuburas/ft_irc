@@ -12,17 +12,19 @@
 
 #include "Server.hpp"
 #include <set>
+#include <arpa/inet.h>
 
 class Client
 {
 	private:
 		struct sockaddr_in	_clientAddr;
+		std::string			_clientHost;
 		int 				_clientFd;
 		socklen_t			_clientAddrLen;
 		struct pollfd		*_fds;
 		std::string			_nick;
 		std::string			_user;
-		std::string			_realname;
+		std::string			_realName;
 		std::set<char>		_userModes;
 	public:
 		// constructor
@@ -33,6 +35,7 @@ class Client
 		
 		// getters
 		sockaddr_in getClientAddr();
+		const std::string	getHost() const;
 		socklen_t 	getClientAddrLen();
 		int 		getClientFd() const;
 		struct pollfd *getFds();
@@ -54,4 +57,7 @@ class Client
 		void	addMode(char mode);
 		void	removeMode(char mode);
 		std::string getModes() const;
+
+		// methods
+		int registerUser();
 };

@@ -26,6 +26,8 @@
 #include <sstream>
 #include "Channel.hpp"
 
+#define SERVER_NAME "Zorg"
+
 class Client;
 class Channel;
 
@@ -37,11 +39,12 @@ class Server
 {
 	private:
 		int										_port;
+		std::string								_name = SERVER_NAME;
 		std::string								_password;
 		int										_serverSocket;
 		struct sockaddr_in						_serverAddr;
 		std::vector<Client>						_clients;
-		std::map<std::string, Channel> 			_channels`;
+		std::map<std::string, Channel> 			_channels;
 		std::map<std::string, CommandHelper>	_commands;
 		
 	public:

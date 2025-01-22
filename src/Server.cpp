@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/17 14:34:37 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/21 11:06:09 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,23 +105,22 @@ void	Server::Run()
                     // New client connection
                     struct sockaddr_in client_addr;
                     socklen_t client_addr_len = sizeof(client_addr);
+
                     int client_fd = accept(this->_serverSocket, (struct sockaddr*)&client_addr, &client_addr_len);
                     if (client_fd < 0) {
                         perror("accept failed");
                         continue;
                     }
+					// Make the new socket non-blocking
+					int flags = fcntl(client_fd, F_GETFL, 0);
+					fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
+
                     this->_clients.emplace_back(client_fd, client_addr);
-					// irssi client needs set nick, user, and setRealname
-					_clients.setNick( "Panda" + i );
-					_clients.setUser( "User" + i );
-					_clients.setRealname( "Bob" + i );
 					fds[nfds].fd = client_fd;
                     fds[nfds].events = POLLIN;
-                    const char * welcome_message = "Welcome to the server!\n";
-                    send(client_fd, welcome_message, strlen(welcome_message), 0);
-                    ++nfds;
 
-                    std::cout << "New client connected: " << client_fd << std::endl;
+                    std::cout << "[" + this->_name +"] New client connected: " << client_fd << std::endl;
+					++nfds;
                 } else {
                     char buffer[1024];
                     ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer) - 1);
@@ -137,12 +136,12 @@ void	Server::Run()
                         // Broadcast message to all clients
                         buffer[bytes_read] = '\0';
 						std::string receivedData(buffer);
-						std::cout << "Received message from client " << fds[i].fd << ": " << receivedData;
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
 						if (client != _clients.end()) {
 							std::vector<std::string> messages = splitMessages(receivedData);
 							for (const auto& message : messages)
 							{
+								std::cout  << fds[i].fd << " >> " << message << std::endl;
 								handleMessage(*client, message);
 							}
 						}
@@ -199,7 +198,7 @@ void Server::handleMessage(Client& client, const std::string& message)
 	}
 	else
 	{
-		SendToClient(client, ":server-name 421 * " + command + " :Unknown command\r\n");
+		SendToClient(client, ":" +this->_name + " 421 * " + command + " :Unknown command\r\n");
 	}
 }
 
@@ -210,35 +209,48 @@ void Server::SendToClient(Client& client, const std::string& message)
 		perror("send failed");
 	}
 	else {
-		std::cout << "Sent message: " << message <<" to client " << client.getClientFd() << ": " << message;
+		std::cout << client.getClientFd() << " << " << message;
 	}
 }
 
 void Server::Cap(Client& client, const std::string& message)
 {
 	(void)message;
-	std::cout << "CAP command received" << std::endl;
-	SendToClient(client, ":server-name CAP * LS :*\r\n");
+	SendToClient(client, ":" +this->_name + " CAP * LS :*\r\n");
 }
 
 void Server::Nick(Client& client, const std::string& message)
 {
-	std::cout << "NICK command received" << std::endl;
 	std::string nickname;
 	std::string command;
 	std::istringstream stream(message);
 	stream >> command >> nickname;
 	if (nickname.empty()) {
-		SendToClient(client, ":server-name 431 * NICK :No nickname given\r\n");
+		SendToClient(client, ":" +this->_name + " 431 * NICK :No nickname given\r\n");
 		return;
 	}
+	// Check if nickname is already in use
+    for (const auto& existingClient : _clients) {
+        if (existingClient.getNick() == nickname) {
+            SendToClient(client, ":" + this->_name + " 433 * " + nickname + " :Nickname is already in use\r\n");
+            return;
+        }
+    }
+
+	// Check that the user has not been registered yet
+	bool registered = client.getNick().empty();
+
+	// set nick
 	client.setNick(nickname);
-	SendToClient(client, ":server-name 001 " + nickname + " :Welcome to the IRC network, " + nickname + "\r\n");
+	SendToClient(client, ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " NICK " + client.getNick() + "\r\n");
+	
+	// welcome new users
+	if(registered)
+		SendToClient(client, ":" +this->_name + " 001 " + client.getNick() + " :Welcome to the IRC network, " + client.getNick() + "\r\n");
 }
 
 void Server::User(Client& client, const std::string& message)
 {
-	std::cout << "USER command received" << std::endl;
 	std::istringstream stream(message);
 	std::string command, username, hostname, servername, realname;
 
@@ -248,12 +260,12 @@ void Server::User(Client& client, const std::string& message)
 		realname = realname.substr(2);
 	if (username.empty())
 	{
-		SendToClient(client, ":server-name 461 * USER :Not enough parameters\r\n");
+		SendToClient(client, ":" +this->_name + " 461 * USER :Not enough parameters\r\n");
 		return;
 	}
 	client.setUser(username);
 	client.setRealname(realname);
-	std::cout << realname << std::endl;
+	//std::cout << realname << std::endl;
 }
 
 void Server::Ping(Client& client, const std::string& message)
@@ -300,8 +312,10 @@ void Server::Mode(Client& client, const std::string& message)
 			adding = false;
 		else if (ch == 'i')
 		{
-			if (adding)
+			if (adding){
 				client.addMode(ch);
+				SendToClient(client, ":" + this->_name + " 221 " + client.getNick() + " +i\r\n");
+			}
 			else
 				client.removeMode(ch);
 		}
