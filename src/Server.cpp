@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/22 13:11:39 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/23 09:21:53 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,7 @@
 Server::Server(int port, std::string password)
 {
 	this->_port = port;
-	this->_password = password; // need to check for password match
+	this->_password = password;
 	initializeCommandHandlers();
 }
 
@@ -39,7 +39,7 @@ void Server::initializeCommandHandlers()
 	_commands["PRIVMSG"] = [this](Client& client, const std::string& message) 	{Priv(client, message); };
 	_commands["JOIN"] = [this](Client& client, const std::string& message)		{Join(client, message); };
 	_commands["QUIT"] = [this](Client& client, const std::string& message) 		{Quit(client, message); };
-	_commands["JOIN"] = [this](Client& client, const std::string& message) 		{Join(client, message); };
+	_commands["PASS"] = [this](Client& client, const std::string& message) 		{Pass(client, message); };
 }
 
 Server::~Server()
@@ -422,6 +422,16 @@ void Server::Join(Client& client, const std::string& message)
         SendToClient(client, "Server 332 " + client.getNick() + " " + channel + " :" + it->second.getTopic() + "\r\n");
 	else // sends topic
         SendToClient(client, "Server 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
+}
+
+void Server::Pass(Client& client, const std::string& message){
+	std::istringstream stream(message);
+	std::string command, pass;
+
+	command >> pass;
+
+	
+	
 }
 
 void Server::sendMessageToChannel(const std::string& channelName, const std::string& message, Client* sender)

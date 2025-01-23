@@ -33,8 +33,6 @@ class Channel;
 
 using CommandHelper = std::function<void(Client&, const std::string&)>;
 
-using CommandHelper = std::function<void(Client&, const std::string&)>;
-
 class Server
 {
 	private:
