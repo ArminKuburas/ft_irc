@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/23 09:21:53 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/23 12:23:10 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -103,6 +103,7 @@ void	Server::Run()
         for (int i = 0; i < nfds; ++i) {
             if (fds[i].revents & POLLIN) {
                 if (fds[i].fd == this->_serverSocket) {
+					// Handling incoming connection requests on the listening socket
                     // New client connection
                     struct sockaddr_in client_addr;
                     socklen_t client_addr_len = sizeof(client_addr);
@@ -123,6 +124,7 @@ void	Server::Run()
                     std::cout << "[" + this->_name +"] New client connected: " << client_fd << std::endl;
 					++nfds;
                 } else {
+					// Handling data on established client connections
                     char buffer[1024];
                     ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer) - 1);
                     if (bytes_read <= 0) {
@@ -134,11 +136,14 @@ void	Server::Run()
                         fds[i] = fds[--nfds];
                         --i;                
                     } else {
-                        // Broadcast message to all clients
                         buffer[bytes_read] = '\0';
 						std::string receivedData(buffer);
+						
+						// Identify which client sent the message using the fd
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
-						if (client != _clients.end()) {
+						if (client->getNick.empty())
+							connectionHandshake(client, receivedData);
+						else if (client != _clients.end()) {
 							std::vector<std::string> messages = splitMessages(receivedData);
 							for (const auto& message : messages)
 							{
@@ -150,6 +155,16 @@ void	Server::Run()
 				}
 			}
 		}
+	}
+}
+
+void Server::connectionHandshake(Client& client, const std::string& receivedData){
+	std::cout << "connectionHandshake running" << std::endl;
+	std::vector<std::string> messages = splitMessages(receivedData);
+	for (const auto& message : messages)
+	{
+		std::cout  << client.getFds() << " >> " << message << std::endl;
+		//handleMessage(*client, message);
 	}
 }
 
@@ -199,7 +214,7 @@ void Server::handleMessage(Client& client, const std::string& message)
 	}
 	else
 	{
-		SendToClient(client, ":" +this->_name + " 421 * " + command + " :Unknown command\r\n");
+		SendToClient(client, ":" + this->_name + " 421 * " + command + " :Unknown command\r\n");
 	}
 }
 
@@ -426,12 +441,17 @@ void Server::Join(Client& client, const std::string& message)
 
 void Server::Pass(Client& client, const std::string& message){
 	std::istringstream stream(message);
-	std::string command, pass;
+	std::string command, password;
 
-	command >> pass;
+	stream >> command >> password;
 
-	
-	
+	if(password.empty()){
+		SendToClient(client, this->_name + "461" + client.getNick() +  "PASS :Not enough parameters");
+	}
+	if(password != this->_password){
+		SendToClient(client, this->_name + "464" + client.getNick() +  ":Password incorrect");
+	}
+	// no response message in case of correct PASS	
 }
 
 void Server::sendMessageToChannel(const std::string& channelName, const std::string& message, Client* sender)
