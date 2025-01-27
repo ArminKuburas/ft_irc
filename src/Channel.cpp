@@ -119,7 +119,7 @@ bool Channel::addOperator(Client* client)
 	{
 		Client* existingClient = *it;
 
-		if ((existingClient->getNick() == client->getNick() || existingClient->getUser() == client->getNick()) && (existingClient->getClientFd() == client->getClientFd()))
+		if (existingClient->getUser() == client->getUser())
 		{
 			return (true);
 		}
@@ -150,7 +150,7 @@ bool Channel::isMember(Client* client) const
 	{
 		Client* possibleMember = *it;
 
-		if ((possibleMember->getNick() == client->getNick() || possibleMember->getUser() == client->getNick()) && (possibleMember->getClientFd() == client->getClientFd()))
+		if ((possibleMember->getUser() == client->getUser()))
 			return (true);
 	}
 	return (false);
@@ -162,7 +162,7 @@ bool Channel::isOperator(Client* client) const
 	{
 		Client* possibleOperator = *it;
 		
-		if ((possibleOperator->getNick() == client->getNick() || possibleOperator->getUser() == client->getNick()) && (possibleOperator->getClientFd() == client->getClientFd()))
+		if (possibleOperator->getUser() == client->getNick())
 			return (true);
 	}
 	return (false);

@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/27 12:55:12 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/27 17:05:01 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,7 @@ void Server::initializeCommandHandlers()
 	_commands["MODE"] = [this](Client& client, const std::string& message) 		{Mode(client, message); };
 	_commands["PRIVMSG"] = [this](Client& client, const std::string& message) 	{Priv(client, message); };
 	_commands["JOIN"] = [this](Client& client, const std::string& message)		{Join(client, message); };
-	_commands["PART"] = [this](Client& client, const std::string& message)		{Join(client, message); };
+	_commands["PART"] = [this](Client& client, const std::string& message)		{Part(client, message); };
 	_commands["QUIT"] = [this](Client& client, const std::string& message) 		{Quit(client, message); };
 }
 
