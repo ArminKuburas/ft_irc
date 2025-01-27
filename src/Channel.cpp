@@ -97,7 +97,6 @@ void Channel::setInviteOnly( bool isInviteOnly )
 // Membership management
 void Channel::addMember(Client* client)
 {
-	// if the member is the first to enter the server, we shall call addOperator
 	if (_members.empty())
 		addOperator(client);
 	_members.emplace(client);
@@ -166,5 +165,12 @@ bool Channel::isOperator(Client* client) const
 		if ((possibleOperator->getNick() == client->getNick() || possibleOperator->getUser() == client->getNick()) && (possibleOperator->getClientFd() == client->getClientFd()))
 			return (true);
 	}
+	return (false);
+}
+
+bool Channel::isChannelEmpty() const
+{
+	if (_members.empty())
+		return (true);
 	return (false);
 }
