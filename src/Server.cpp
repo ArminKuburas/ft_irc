@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/27 17:05:01 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/28 15:37:58 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -415,7 +415,8 @@ void Server::Join(Client& client, const std::string& message)
 	}
 	
 	it->second.addMember(&client);
-	SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
+	if (it->second.isMember(&client))
+		SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
 	// std::string namesList = "Server 353 " + client.getNick() + " = " + channel + " :"; // Need a method to the message when created
 	// for (Client* member : it->second.getMembers())
 	// {
@@ -439,7 +440,10 @@ void Server::sendMessageToChannel(const std::string& channelName, const std::str
 	for (Client* member : it->second.getMembers())
 	{
 		if (member != sender)
-			SendToClient(*member, message);
+		{
+			if (it->second.isMember(sender))
+				SendToClient(*member, message);
+		}
 	}
 }
 

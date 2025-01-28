@@ -104,10 +104,10 @@ void Channel::addMember(Client* client)
 
 bool Channel::removeMember(Client* client)
 {
-	auto it = _operators.find(client);
-	if (it != _operators.end())
+	auto it = _members.find(client);
+	if (it != _members.end())
 	{
-		_operators.erase(it);
+		_members.erase(it);
 		return (true);
 	}
 	return (false);
@@ -137,7 +137,6 @@ bool Channel::removeOperator(Client* client)
 		return (true);
 	}
 	return (false);
-
 }
 
 // Channel settings
@@ -150,7 +149,7 @@ bool Channel::isMember(Client* client) const
 	{
 		Client* possibleMember = *it;
 
-		if ((possibleMember->getUser() == client->getUser()))
+		if ((possibleMember->getClientFd() == client->getClientFd()))
 			return (true);
 	}
 	return (false);
@@ -162,7 +161,7 @@ bool Channel::isOperator(Client* client) const
 	{
 		Client* possibleOperator = *it;
 		
-		if (possibleOperator->getUser() == client->getNick())
+		if (possibleOperator->getClientFd() == client->getClientFd())
 			return (true);
 	}
 	return (false);
