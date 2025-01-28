@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/28 12:06:56 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/28 12:26:16 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -176,22 +176,14 @@ int Server::connectionHandshake(Client& client, const std::string& receivedData)
 	std::cout << "connectionHandshake running" << std::endl;
 	std::vector<std::string> messages = splitMessages(receivedData);
 
+	// first check if PASS is provided and is correct
 	for (const auto& message : messages)
 	{
 		std::istringstream stream(message);
 		std::string command;
 		stream >> command;
-		// /connect 127.0.0.1 6667
-		//std::cout  << client.getFds() << " >> " << message << std::endl;
 
-		// Convert command to uppercase
-		std::transform(command.begin(), command.end(), command.begin(), ::toupper);
-		if(command == "CAP"){
-			std::cout  << client.getClientFd() << " >> " << message << std::endl;
-			Server::Cap(client, message);
-			std::cout << std::endl;
-		}
-		else if(command == "PASS"){
+		if(command == "PASS"){
 			std::cout  << client.getClientFd() << " >> " << message << std::endl;
 			int grant_access = Server::Pass(client, message);
 			std::cout << std::endl;
@@ -200,6 +192,27 @@ int Server::connectionHandshake(Client& client, const std::string& receivedData)
 			}
 			client.setAuthentication(true);
 		}
+
+		if(!client.getAuthentication()){
+			SendToClient(client, this->_name + " 464 " + client.getNick() +  ":Password incorrect\r\n");
+			return 0;
+		}
+	}
+
+	for (const auto& message : messages)
+	{
+		std::istringstream stream(message);
+		std::string command;
+		stream >> command;
+
+		std::transform(command.begin(), command.end(), command.begin(), ::toupper);
+		if(command == "CAP"){
+			std::cout  << client.getClientFd() << " >> " << message << std::endl;
+			Server::Cap(client, message);
+			std::cout << std::endl;
+		}
+		else if(command == "PASS")
+			continue;
 		else if (command == "NICK"){
 			std::cout  << client.getClientFd() << " >> " << message << std::endl;
 			Server::Nick(client, message);
@@ -211,11 +224,6 @@ int Server::connectionHandshake(Client& client, const std::string& receivedData)
 			std::cout << std::endl;
 		}
 
-	}
-	std::cout << "Checking the authentication......." <<std::endl;
-	if(!client.getAuthentication()){
-		SendToClient(client, this->_name + " 464 " + client.getNick() +  ":Password incorrect\r\n");
-		return 0;
 	}
 	return 1;
 }
