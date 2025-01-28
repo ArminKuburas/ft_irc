@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:45 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/23 10:35:10 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/28 11:39:23 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -68,6 +68,18 @@ bool	parsing(std::string port, std::string password)
 	return (true);
 }
 
+class fasdfasdf {
+   public:
+	   fasdfasdf();
+		~fasdfasdf();
+	   fasdfasdf(const fasdfasdf& other);
+	   fasdfasdf& operator=(const fasdfasdf& other);
+	   fasdfasdf(fasdfasdf&& other);
+	   fasdfasdf& operator=(fasdfasdf&& other);
+
+   private:
+	   // Add member variables here
+};
 int main(int argc, char **argv)
 {
 	if (argc != 3)

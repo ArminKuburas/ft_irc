@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/28 11:18:35 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/28 11:51:02 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -162,6 +162,7 @@ void	Server::Run()
 							{
 								std::cout  << fds[i].fd << " >> " << message << std::endl;
 								handleMessage(*client, message);
+								std::cout << std::endl;
 							}
 						}
 					}
@@ -177,16 +178,36 @@ int Server::connectionHandshake(Client& client, const std::string& receivedData)
 
 	for (const auto& message : messages)
 	{
+		std::istringstream stream(message);
+		std::string command;
+		stream >> command;
 		// /connect 127.0.0.1 6667
-		// std::cout  << client.getFds() << " >> " << message << std::endl;
-		if(message.find("CAP")){
+		//std::cout  << client.getFds() << " >> " << message << std::endl;
+
+		// Convert command to uppercase
+		std::transform(command.begin(), command.end(), command.begin(), ::toupper);
+		if(command == "CAP"){
+			std::cout  << client.getClientFd() << " >> " << message << std::endl;
 			Server::Cap(client, message);
+			std::cout << std::endl;
 		}
-		else if(message.find("PASS")){
+		else if(command == "PASS"){
+			std::cout  << client.getClientFd() << " >> " << message << std::endl;
 			int grant_access = Server::Pass(client, message);
+			std::cout << std::endl;
 			if(!grant_access){
 				return 0;
 			}
+		}
+		else if (command == "NICK"){
+			std::cout  << client.getClientFd() << " >> " << message << std::endl;
+			Server::Nick(client, message);
+			std::cout << std::endl;
+		}
+		else if (command == "USER"){
+			std::cout  << client.getClientFd() << " >> " << message << std::endl;
+			Server::User(client, message);
+			std::cout << std::endl;
 		}
 	}
 	return 1;
@@ -474,6 +495,7 @@ int Server::Pass(Client& client, const std::string& message){
 		return 0;
 	}
 	if(password != this->_password){
+		std::cout << "Password sent by irssi is: " << password << std::endl;
 		SendToClient(client, this->_name + " 464 " + client.getNick() +  ":Password incorrect\r\n");
 		return 0;
 	}
