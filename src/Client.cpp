@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/21 11:12:14 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/28 12:02:03 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,6 +57,15 @@ void	Client::setClientFd( int clientFd )
 {
 	this->_clientFd = clientFd;
 }
+
+void Client::setAuthentication(bool auth){
+	this->_isAuthenticated = auth;
+}
+
+bool Client::getAuthentication() const{
+	return this->_isAuthenticated;
+}
+
 
 					// char buffer[1024];
                     // ssize_t bytes_read = read(fds[nfds].fd, buffer, sizeof(buffer) - 1);

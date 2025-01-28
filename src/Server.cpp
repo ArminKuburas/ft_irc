@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/28 11:51:02 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/28 12:06:56 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -198,6 +198,7 @@ int Server::connectionHandshake(Client& client, const std::string& receivedData)
 			if(!grant_access){
 				return 0;
 			}
+			client.setAuthentication(true);
 		}
 		else if (command == "NICK"){
 			std::cout  << client.getClientFd() << " >> " << message << std::endl;
@@ -209,6 +210,12 @@ int Server::connectionHandshake(Client& client, const std::string& receivedData)
 			Server::User(client, message);
 			std::cout << std::endl;
 		}
+
+	}
+	std::cout << "Checking the authentication......." <<std::endl;
+	if(!client.getAuthentication()){
+		SendToClient(client, this->_name + " 464 " + client.getNick() +  ":Password incorrect\r\n");
+		return 0;
 	}
 	return 1;
 }

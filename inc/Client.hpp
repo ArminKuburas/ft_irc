@@ -26,6 +26,7 @@ class Client
 		std::string			_user;
 		std::string			_realName;
 		std::set<char>		_userModes;
+		int					_isAuthenticated = false;
 	public:
 		// constructor
 		Client( int fd, const sockaddr_in& addr);
@@ -42,6 +43,7 @@ class Client
 		const std::string	getNick() const;
 		const std::string	getUser() const;
 		const std::string	getRealname() const;
+		bool			getAuthentication() const;
 
 		// setters
 		void	setClientAddr( sockaddr_in clientAddr );
@@ -51,6 +53,7 @@ class Client
 		void	setNick( std::string nick );
 		void	setUser( std::string user );
 		void	setRealname( std::string realname );
+		void	setAuthentication(bool auth);
 
 		//mode
 		bool	hasMode(char mode) const;
