@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/23 12:23:10 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/28 11:18:35 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -138,11 +138,24 @@ void	Server::Run()
                     } else {
                         buffer[bytes_read] = '\0';
 						std::string receivedData(buffer);
-						
+
 						// Identify which client sent the message using the fd
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
-						if (client->getNick.empty())
-							connectionHandshake(client, receivedData);
+						if (client->getNick().empty()){
+							int grant_access = connectionHandshake(*client, receivedData);
+							if(!grant_access){
+								shutdown(client->getClientFd(), SHUT_RDWR);
+								close(client->getClientFd());
+								_clients.erase(
+								std::remove_if(
+									_clients.begin(),
+									_clients.end(),
+									[fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; }),
+								_clients.end());
+								fds[i] = fds[--nfds];
+								--i;
+							}
+						}
 						else if (client != _clients.end()) {
 							std::vector<std::string> messages = splitMessages(receivedData);
 							for (const auto& message : messages)
@@ -158,14 +171,25 @@ void	Server::Run()
 	}
 }
 
-void Server::connectionHandshake(Client& client, const std::string& receivedData){
+int Server::connectionHandshake(Client& client, const std::string& receivedData){
 	std::cout << "connectionHandshake running" << std::endl;
 	std::vector<std::string> messages = splitMessages(receivedData);
+
 	for (const auto& message : messages)
 	{
-		std::cout  << client.getFds() << " >> " << message << std::endl;
-		//handleMessage(*client, message);
+		// /connect 127.0.0.1 6667
+		// std::cout  << client.getFds() << " >> " << message << std::endl;
+		if(message.find("CAP")){
+			Server::Cap(client, message);
+		}
+		else if(message.find("PASS")){
+			int grant_access = Server::Pass(client, message);
+			if(!grant_access){
+				return 0;
+			}
+		}
 	}
+	return 1;
 }
 
 std::vector<std::string> Server::splitMessages(const std::string& message)
@@ -439,18 +463,21 @@ void Server::Join(Client& client, const std::string& message)
         SendToClient(client, "Server 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
 }
 
-void Server::Pass(Client& client, const std::string& message){
+int Server::Pass(Client& client, const std::string& message){
 	std::istringstream stream(message);
 	std::string command, password;
 
 	stream >> command >> password;
 
 	if(password.empty()){
-		SendToClient(client, this->_name + "461" + client.getNick() +  "PASS :Not enough parameters");
+		SendToClient(client, this->_name + " 461 " + client.getNick() +  "PASS :Not enough parameters\r\n");
+		return 0;
 	}
 	if(password != this->_password){
-		SendToClient(client, this->_name + "464" + client.getNick() +  ":Password incorrect");
+		SendToClient(client, this->_name + " 464 " + client.getNick() +  ":Password incorrect\r\n");
+		return 0;
 	}
+	return 1;
 	// no response message in case of correct PASS	
 }
 

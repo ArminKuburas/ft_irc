@@ -71,7 +71,7 @@ class Server
 		void SendToClient(Client& client, const std::string& message);
 		void sendMessageToChannel(const std::string& channelName, const std::string& message, Client* sender);
 		void handleMessage(Client& client, const std::string& message);
-		void connectionHandshake(Client& client, const std::string& receivedData);
+		int connectionHandshake(Client& client, const std::string& receivedData);
 
 		// Command handlers
 		void Ping(Client& client, const std::string& message);
@@ -83,7 +83,7 @@ class Server
 		void Join(Client& client, const std::string& message);
 		void Quit(Client& client, const std::string& message);
 		void Priv(Client& client, const std::string& message);
-		void Pass(Client& client, const std::string& message);
+		int  Pass(Client& client, const std::string& message);
 
 		void initializeCommandHandlers();
 		std::vector<std::string> splitMessages(const std::string& message);
