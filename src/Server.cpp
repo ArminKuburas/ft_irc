@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/28 12:26:16 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/28 21:00:46 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -127,42 +127,52 @@ void	Server::Run()
 					// Handling data on established client connections
                     char buffer[1024];
                     ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer) - 1);
+					//std::cout << "Number of bytes read: " << bytes_read << std::endl;
                     if (bytes_read <= 0) {
-                        std::cout << "Client disconnected: " << fds[i].fd << std::endl;
+                        std::cout << "Client disconnected1: " << fds[i].fd << std::endl;
+						shutdown(fds[i].fd, SHUT_WR);
                         close(fds[i].fd);
                         _clients.erase(std::remove_if(_clients.begin(), _clients.end(),
                             [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; }),
                             _clients.end());
                         fds[i] = fds[--nfds];
-                        --i;                
+                        --i;
                     } else {
                         buffer[bytes_read] = '\0';
 						std::string receivedData(buffer);
 
 						// Identify which client sent the message using the fd
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
-						if (client->getNick().empty()){
-							int grant_access = connectionHandshake(*client, receivedData);
-							if(!grant_access){
-								shutdown(client->getClientFd(), SHUT_RDWR);
+
+						// Buffer handling???
+						// client->appendToBuffer(receivedData);
+						// // Split complete messages (ending with \r\n)
+						// std::vector<std::string> messages;
+						// size_t pos;
+						// while ((pos = client->getBuffer().find("\r\n")) != std::string::npos) {
+						// 	std::string message = client->getBuffer().substr(0, pos);
+						// 	messages.push_back(message);
+						// 	client->getBuffer().erase(0, pos + 2); // Remove processed message + \r\n
+						// }
+						// Process complete messages
+						std::vector<std::string> messages = splitMessages(receivedData);
+						if (!client->getAuthentication()) {
+							int grant_access = connectionHandshake(*client, messages); // Pass individual message
+							if (!grant_access) {
+								// Close connection immediately
+								SendToClient(*client, "ERROR :Closing Link: " + client->getNick() + " (Bad password)\r\n");
+								std::cout << "[Zorg] Client disconnected2: " << fds[i].fd << std::endl;
+								shutdown(client->getClientFd(), SHUT_WR);
 								close(client->getClientFd());
-								_clients.erase(
-								std::remove_if(
-									_clients.begin(),
-									_clients.end(),
-									[fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; }),
-								_clients.end());
+								_clients.erase(std::remove_if(_clients.begin(), _clients.end(),
+									[fd = fds[i].fd](const Client& c) { return c.getClientFd() == fd; }), _clients.end());
 								fds[i] = fds[--nfds];
 								--i;
 							}
-						}
-						else if (client != _clients.end()) {
-							std::vector<std::string> messages = splitMessages(receivedData);
-							for (const auto& message : messages)
-							{
-								std::cout  << fds[i].fd << " >> " << message << std::endl;
+						} else {
+							for(const std::string& message : messages) {
+								std::cout << client->getClientFd() << " >> " << message << std::endl;
 								handleMessage(*client, message);
-								std::cout << std::endl;
 							}
 						}
 					}
@@ -172,60 +182,50 @@ void	Server::Run()
 	}
 }
 
-int Server::connectionHandshake(Client& client, const std::string& receivedData){
-	std::cout << "connectionHandshake running" << std::endl;
-	std::vector<std::string> messages = splitMessages(receivedData);
+int Server::connectionHandshake(Client& client, std::vector<std::string> messages) {
 
-	// first check if PASS is provided and is correct
-	for (const auto& message : messages)
-	{
+	std::cout << "Connection Handshake......." << std::endl;
+	for(const std::string& message : messages) {
 		std::istringstream stream(message);
 		std::string command;
 		stream >> command;
+		std::transform(command.begin(), command.end(), command.begin(), ::toupper);
+		
+		std::cout << client.getClientFd() << " >> " << message << std::endl;
 
-		if(command == "PASS"){
-			std::cout  << client.getClientFd() << " >> " << message << std::endl;
+		if (command == "PASS") {
 			int grant_access = Server::Pass(client, message);
-			std::cout << std::endl;
-			if(!grant_access){
+			if (!grant_access) {
+				SendToClient(client, ":" + _name + " 464 * :Password incorrect\r\n");
 				return 0;
 			}
 			client.setAuthentication(true);
-		}
-
-		if(!client.getAuthentication()){
-			SendToClient(client, this->_name + " 464 " + client.getNick() +  ":Password incorrect\r\n");
-			return 0;
-		}
-	}
-
-	for (const auto& message : messages)
-	{
-		std::istringstream stream(message);
-		std::string command;
-		stream >> command;
-
-		std::transform(command.begin(), command.end(), command.begin(), ::toupper);
-		if(command == "CAP"){
-			std::cout  << client.getClientFd() << " >> " << message << std::endl;
-			Server::Cap(client, message);
-			std::cout << std::endl;
-		}
-		else if(command == "PASS")
-			continue;
-		else if (command == "NICK"){
-			std::cout  << client.getClientFd() << " >> " << message << std::endl;
+		} else if (command == "NICK") {
+			// Only allow NICK/USER after PASS
+			if (!client.getAuthentication()) {
+				SendToClient(client, ":" + _name + " 451 * :You have not registered\r\n");
+				return 0;
+			}
 			Server::Nick(client, message);
-			std::cout << std::endl;
-		}
-		else if (command == "USER"){
-			std::cout  << client.getClientFd() << " >> " << message << std::endl;
+		} else if (command == "USER") {
+			if (!client.getAuthentication()) {
+				SendToClient(client, ":" + _name + " 451 * :You have not registered\r\n");
+				return 0;
+			}
 			Server::User(client, message);
-			std::cout << std::endl;
+		} else if (command == "CAP") {
+			Server::Cap(client, message);
+		} else {
+			SendToClient(client, ":" + _name + " 421 " + command + " :Unknown command\r\n");
 		}
 
+		// Check if registration is complete (PASS + NICK + USER)
+		if (client.getAuthentication() && !client.getNick().empty() && !client.getUser().empty()) {
+		    SendToClient(client, ":" + _name + " 001 " + client.getNick() + " :Welcome to the server\r\n");
+		}
 	}
-	return 1;
+
+    return 1;
 }
 
 std::vector<std::string> Server::splitMessages(const std::string& message)
@@ -313,16 +313,9 @@ void Server::Nick(Client& client, const std::string& message)
         }
     }
 
-	// Check that the user has not been registered yet
-	bool registered = client.getNick().empty();
-
 	// set nick
 	client.setNick(nickname);
 	SendToClient(client, ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " NICK " + client.getNick() + "\r\n");
-	
-	// welcome new users
-	if(registered)
-		SendToClient(client, ":" +this->_name + " 001 " + client.getNick() + " :Welcome to the IRC network, " + client.getNick() + "\r\n");
 }
 
 void Server::User(Client& client, const std::string& message)
@@ -510,10 +503,10 @@ int Server::Pass(Client& client, const std::string& message){
 		return 0;
 	}
 	if(password != this->_password){
-		std::cout << "Password sent by irssi is: " << password << std::endl;
-		SendToClient(client, this->_name + " 464 " + client.getNick() +  ":Password incorrect\r\n");
+		SendToClient(client, this->_name + " 464 " + client.getNick() +  " :Password Incorrect\r\n");
 		return 0;
 	}
+	std::cout << "[Zorg] password accepted" << std::endl;
 	return 1;
 	// no response message in case of correct PASS	
 }

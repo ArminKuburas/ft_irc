@@ -71,7 +71,7 @@ class Server
 		void SendToClient(Client& client, const std::string& message);
 		void sendMessageToChannel(const std::string& channelName, const std::string& message, Client* sender);
 		void handleMessage(Client& client, const std::string& message);
-		int connectionHandshake(Client& client, const std::string& receivedData);
+		int connectionHandshake(Client& client, std::vector<std::string> messages);
 
 		// Command handlers
 		void Ping(Client& client, const std::string& message);

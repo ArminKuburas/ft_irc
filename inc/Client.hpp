@@ -27,6 +27,7 @@ class Client
 		std::string			_realName;
 		std::set<char>		_userModes;
 		int					_isAuthenticated = false;
+		std::string 		_readBuffer;
 	public:
 		// constructor
 		Client( int fd, const sockaddr_in& addr);
@@ -60,4 +61,8 @@ class Client
 		void	addMode(char mode);
 		void	removeMode(char mode);
 		std::string getModes() const;
+
+		void appendToBuffer(const std::string& data) { _readBuffer += data; }
+   		std::string& getBuffer() { return _readBuffer; }
+    	void clearBuffer() { _readBuffer.clear(); }
 };

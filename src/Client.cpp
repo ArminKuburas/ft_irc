@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/28 12:02:03 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/28 15:14:24 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -94,7 +94,10 @@ void	Client::setNick( std::string nick )
 
 const std::string	Client::getNick() const
 {
-	return (this->_nick);
+	if(this->_nick.empty())
+		return("*");
+	else
+		return (this->_nick);
 }
 
 void	Client::setUser( std::string user )
