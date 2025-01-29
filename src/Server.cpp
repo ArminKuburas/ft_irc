@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 15:09:46 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/29 15:51:49 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -281,7 +281,7 @@ void Server::SendToClient(Client& client, const std::string& message)
 		std::cerr << "[Zorg] Invalid file descriptor for client " << client.getClientFd() << std::endl;
 	return;
 	}
-	ssize_t bytes_sent = send(client.getClientFd(), message.c_str(), message.size(), 0);
+	ssize_t bytes_sent = send(client.getClientFd(), message.c_str(), message.length(), 0);
 	if (bytes_sent < 0) {
 		std::cerr << "[Zorg] Send failed. Error code: " << errno << " - " << strerror(errno) << std::endl;
 	}
@@ -310,24 +310,53 @@ void Server::Cap(Client& client, const std::string& message)
 
 void Server::Nick(Client& client, const std::string& message)
 {
-	std::string command, nickname;
+	std::string command, newNickname;
 	std::istringstream stream(message);
-	stream >> command >> nickname;
-	if (nickname.empty()) {
-		SendToClient(client, ":" +this->_name + " 431 * NICK :No nickname given\r\n");
+	stream >> command >> newNickname;
+	if (newNickname.empty()) {
+		SendToClient(client, ":" +this->_name + " 431 " + client.getNick() + " :No nickname given\r\n");
 		return;
 	}
-	// Check if nickname is already in use
-    for (const auto& existingClient : _clients) {
-        if (existingClient.getNick() == nickname) {
-            SendToClient(client, ":" + this->_name + " 433 * " + nickname + " :Nickname is already in use\r\n");
-            return;
-        }
-    }
+	// Check if the nickname is valid
+	bool valid_nickname = true;
+	if(newNickname.length() > 9)
+		valid_nickname = false;
+	// First character must be a letter, '_' or '|
+	if (newNickname.empty() || !(isalpha(newNickname[0]) || newNickname[0] == '_' || newNickname[0] == '|')) {
+		valid_nickname = false;
+	}
+	// Check valid characters
+	for (char c : newNickname) {
+		if (!(isalnum(c) || c == '-' || c == '_' || c == '|' ||
+			  c == '[' || c == ']' || c == '\\' || c == '`' ||
+			  c == '^' || c == '{' || c == '}')) {
+			valid_nickname = false;
+		}
+	}
+	if(!valid_nickname){
+		SendToClient(client, ":" + _name + " 432 " + client.getNick() + " :Erroneous nickname\r\n");
+		return;
+	}
 
-	// set nick
-	client.setNick(nickname);
-	SendToClient(client, ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " NICK " + client.getNick() + "\r\n");
+	// Check if nickname is already in use
+	for (const auto& existingClient : _clients) {
+		if (existingClient.getNick() == newNickname) {
+			SendToClient(client, ":" + _name + " 433 * " + client.getNick() + " :Nickname is already in use\r\n");
+			return;
+		}
+	}
+	// All is good. Set nick
+	std::string oldNickname = client.getNick();
+	client.setNick(newNickname);
+	SendToClient(client, ":" + oldNickname + "!" + client.getUser() + "@" + client.getHost() + " NICK " + client.getNick() + "\r\n");
+
+	// NOT IMPLEMENTED
+	// ERR_NICKCOLLISION not implemented
+			//-> same nickname in two servers
+	// ERR_UNAVAILRESOURCE
+			//-> The requested nickname or channel is temporarily unavailable (e.g., a user just quit and their nickname is still reserved).
+	// ERR_RESTRICTED (484)
+			// ->  The client is on a restricted connection and cannot change their nickname or perform certain actions.
 }
 
 void Server::User(Client& client, const std::string& message)
