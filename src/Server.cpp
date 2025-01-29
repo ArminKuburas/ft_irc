@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/28 15:37:58 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/29 13:07:30 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -142,7 +142,7 @@ void	Server::Run()
 							std::vector<std::string> messages = splitMessages(receivedData);
 							for (const auto& message : messages)
 							{
-								std::cout  << fds[i].fd << " >> " << message << std::endl;
+								std::cout << fds[i].fd << " >> " << message << std::endl;
 								handleMessage(*client, message);
 							}
 						}
@@ -351,10 +351,10 @@ void Server::Priv(Client& client, const std::string& message)
 			return ;
 		}
 		if (it->second.isMember(&client))
-			sendMessageToChannel(target, ":" + client.getNick() + " PRIVMSG " + target + " :" + messageContent + "\r\n", &client);
+			SendToChannel(target, ":" + client.getNick() + " PRIVMSG " + target + " :" + messageContent + "\r\n", &client, false);
 		else
 		{
-			std::string ERR_NOMEMBER = "You are not a member of the channel " + target + "\r\n";
+			std::string ERR_NOMEMBER = "Zorg: you are not a member of the channel " + target + "\r\n";
 			SendToClient(client, ERR_NOMEMBER);
 		}
 	}
@@ -407,7 +407,8 @@ void Server::Join(Client& client, const std::string& message)
 	}
 
 	auto it = _channels.find(channel);
-	if (it == _channels.end()) // we did not find any channel
+	// we did not find any channel
+	if (it == _channels.end()) 
 	{
 		Channel newChannel(channel, "na", false, false);
 		_channels.emplace(channel, newChannel);
@@ -416,31 +417,39 @@ void Server::Join(Client& client, const std::string& message)
 	
 	it->second.addMember(&client);
 	if (it->second.isMember(&client))
+	{
 		SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
-	// std::string namesList = "Server 353 " + client.getNick() + " = " + channel + " :"; // Need a method to the message when created
-	// for (Client* member : it->second.getMembers())
-	// {
-	// 	namesList += member->getNick() + " ";
-	// }
-	// namesList += "\r\n";
-	// SendToClient(client, namesList);
-	// SendToClient(client, "Server 366 " + client.getNick() + " " + channel + " End of /NAMES list\r\n");
-	// if (it->second.getTopic() == "na") // no topic
-    //     SendToClient(client, "Server 332 " + client.getNick() + " " + channel + " :" + it->second.getTopic() + "\r\n");
-	// else // sends topic
-    //     SendToClient(client, "Server 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
+		std::string namesList;
+		for (Client* member : it->second.getMembers())
+			namesList += member->getNick() + " ";
+		namesList += "\r\n";
+		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "Members: " + namesList + "\r\n", &client, true);
+		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "Topic: " + it->second.getTopic() + "\r\n", &client, true);
+		std::cout << "Client has entered channel" << it->second.getName() << std::endl;
+	}
 }
 
-void Server::sendMessageToChannel(const std::string& channelName, const std::string& message, Client* sender)
+void Server::SendToChannel(const std::string& channelName, const std::string& message, Client* sender, bool justJoined)
 {
 	auto it = _channels.find(channelName);
 	if (it == _channels.end())
 		return ;
 	
+	if (justJoined)
+	{
+		if (it->second.isMember(sender))
+			SendToClient(*sender, message);
+	}
+
 	for (Client* member : it->second.getMembers())
 	{
 		if (member != sender)
 		{
+			if (justJoined)
+			{
+				const std::string join_message = sender->getNick() + " has joined the chat";
+				SendToClient(*member, join_message);
+			}
 			if (it->second.isMember(sender))
 				SendToClient(*member, message);
 		}
@@ -460,13 +469,14 @@ void Server::Part(Client& client, const std::string& message)
 	}
 
 	auto it = _channels.find(channel);
-	if (it == _channels.end()) // we did not find any channel
+	// we did not find any channel
+	if (it == _channels.end()) 
 	{
 		SendToClient(client, "ERR_NOSUCHCHANNEL " + client.getNick() + " " + channel + ": Invalid channel name\r\n");
 		return ;
 	}
 	it->second.removeMember(&client);
-	SendToClient(client, ":" + client.getNick() + " PART " + channel + "\r\n");
+	SendToClient(client, ":" + client.getNick() + " PART " + "#" + channel + "\r\n");
 	if (it->second.isChannelEmpty())
 		_channels.erase(channel);
 }

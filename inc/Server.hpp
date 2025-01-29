@@ -55,38 +55,38 @@ class Server
 		~Server();
 
 		// getters
-		int			getPort();
-		int			getSocket();
-		const sockaddr_in	&getServerAddr() const;
+		int							getPort();
+		int							getSocket();
+		const sockaddr_in&			getServerAddr() const;
 		// pollfd		*getFdPoll();
 
 		// setters
-		void		setSocket( int socket );
-		void		setServerAddr();
+		void						setSocket( int socket );
+		void						setServerAddr();
 
 
 		// public methods
-		void portConversion( std::string port );
-		void Run();
-		void AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen );
-		void BroadcastMessage(std:: string &messasge);
-		void SendToClient(Client& client, const std::string& message);
-		void sendMessageToChannel(const std::string& channelName, const std::string& message, Client* sender);
-		void handleMessage(Client& client, const std::string& message);
+		void 						portConversion( std::string port );
+		void 						Run();
+		void 						AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen );
+		void 						BroadcastMessage(std:: string &messasge);
+		void 						SendToClient(Client& client, const std::string& message);
+		void 						SendToChannel(const std::string& channelName, const std::string& message, Client* sender, bool justJoined);
+		void 						handleMessage(Client& client, const std::string& message);
 
 		// Command handlers
-		void Ping(Client& client, const std::string& message);
-		void Pong(Client& client, const std::string& message);
-		void Cap(Client& client, const std::string& message);
-		void Nick(Client& client, const std::string& message);
-		void User(Client& client, const std::string& message);
-		void Mode(Client& client, const std::string& message);
-		void Join(Client& client, const std::string& message);
-		void Quit(Client& client, const std::string& message);
-		void Priv(Client& client, const std::string& message);
-		void Part(Client& client, const std::string& message);
+		void 						Ping(Client& client, const std::string& message);
+		void 						Pong(Client& client, const std::string& message);
+		void 						Cap(Client& client, const std::string& message);
+		void 						Nick(Client& client, const std::string& message);
+		void 						User(Client& client, const std::string& message);
+		void 						Mode(Client& client, const std::string& message);
+		void 						Join(Client& client, const std::string& message);
+		void 						Quit(Client& client, const std::string& message);
+		void 						Priv(Client& client, const std::string& message);
+		void 						Part(Client& client, const std::string& message);
 
-		void initializeCommandHandlers();
-		std::vector<std::string> splitMessages(const std::string& message);
+		void 						initializeCommandHandlers();
+		std::vector<std::string>	splitMessages(const std::string& message);
 
 };

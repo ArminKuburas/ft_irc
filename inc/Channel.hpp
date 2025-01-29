@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/18 11:18:19 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/27 12:51:30 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/29 09:38:46 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,27 +35,27 @@ class Channel
 		~Channel();
 
 		// Getters
-		const		std::string getName() const;
-		const		std::string getTopic() const;
-		const		std::set<Client*> getMembers() const;
-		const		std::set<Client*> getOperators() const;
-		const bool&	getIsPrivate() const;
-		const bool&	getIsInviteOnly() const;
+		const std::string 		getName() const;
+		const std::string 		getTopic() const;
+		const std::set<Client*> getMembers() const;
+		const std::set<Client*> getOperators() const;
+		const bool&				getIsPrivate() const;
+		const bool&				getIsInviteOnly() const;
 
 		// Setters
-		void		setTopic(const std::string& newTopic);
-		void		setPrivate(bool isPrivate);
-		void		setInviteOnly(bool isInviteOnly);
+		void					setTopic(const std::string& newTopic);
+		void					setPrivate(bool isPrivate);
+		void					setInviteOnly(bool isInviteOnly);
 
 		// Membership management
-		bool		addOperator(Client* client);
-		void		addMember(Client* client);
-		bool		removeMember(Client* client);
-		bool		removeOperator(Client* client);
+		bool					addOperator(Client* client);
+		void					addMember(Client* client);
+		bool					removeMember(Client* client);
+		bool					removeOperator(Client* client);
 		
 		// Utility
-		bool 		isMember(Client* client) const;
-		bool 		isOperator(Client* client) const;
-		bool		isChannelEmpty() const;
+		bool 					isMember(Client* client) const;
+		bool 					isOperator(Client* client) const;
+		bool					isChannelEmpty() const;
 
 };
