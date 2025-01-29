@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 11:43:22 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/29 15:09:46 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -512,18 +512,23 @@ int Server::Pass(Client& client, const std::string& message){
 	std::string command, password;
 
 	stream >> command >> password;
+	if(client.getAuthentication()){
+		SendToClient(client, ":" + _name + " 462 " + client.getNick() + " :You may not reregister\r\n");
+		return 0;
+	}
 
 	if(password.empty()){
-		SendToClient(client, this->_name + " 461 " + client.getNick() +  "PASS :Not enough parameters\r\n");
+		SendToClient(client, _name + " 461 " + client.getNick() +  "PASS :Not enough parameters\r\n");
 		return 0;
 	}
-	if(password != this->_password){
-		SendToClient(client, this->_name + " 464 " + client.getNick() +  " :Password Incorrect\r\n");
+
+	if(password != _password){
+		SendToClient(client, _name + " 464 " + client.getNick() +  " :Password Incorrect\r\n");
 		return 0;
 	}
+	// no response message in case of correct PASS
 	std::cout << "[Zorg] password accepted" << std::endl;
 	return 1;
-	// no response message in case of correct PASS	
 }
 
 void Server::sendMessageToChannel(const std::string& channelName, const std::string& message, Client* sender)
