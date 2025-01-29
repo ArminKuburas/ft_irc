@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 13:07:30 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/29 13:33:59 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -414,6 +414,10 @@ void Server::Join(Client& client, const std::string& message)
 		_channels.emplace(channel, newChannel);
 		it = _channels.find(channel);
 	}
+	// if (!key.empty())
+	// {
+		
+	// }
 	
 	it->second.addMember(&client);
 	if (it->second.isMember(&client))
@@ -476,7 +480,7 @@ void Server::Part(Client& client, const std::string& message)
 		return ;
 	}
 	it->second.removeMember(&client);
-	SendToClient(client, ":" + client.getNick() + " PART " + "#" + channel + "\r\n");
+	SendToClient(client, ":" + client.getNick() + " PART " + channel + "\r\n");
 	if (it->second.isChannelEmpty())
 		_channels.erase(channel);
 }
