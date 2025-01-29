@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 15:51:49 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/29 16:04:04 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -361,6 +361,11 @@ void Server::Nick(Client& client, const std::string& message)
 
 void Server::User(Client& client, const std::string& message)
 {
+	if(!client.getUser().empty()){
+		SendToClient(client, ":" + _name + " 462 "+ client.getNick() + " USER :You may not reregister\r\n");
+		return;
+	}
+
 	std::istringstream stream(message);
 	std::string command, username, hostname, servername, realname;
 
@@ -370,14 +375,14 @@ void Server::User(Client& client, const std::string& message)
 		realname = realname.substr(2);
 	if (username.empty())
 	{
-		SendToClient(client, ":" +this->_name + " 461 * USER :Not enough parameters\r\n");
+		SendToClient(client, ":" + _name + " 461 "+ client.getNick() + "USER :Not enough parameters\r\n");
 		return;
 	}
 	client.setUser(username);
 	client.setRealname(realname);
 	// Check if registration is complete (PASS + NICK + USER)
 	if (client.getAuthentication() && !client.getNick().empty() && !client.getUser().empty()) {
-		    SendToClient(client, ":" + _name + " 001 " + client.getNick() + " :Welcome to the server\r\n");
+			SendToClient(client, ":" + _name + " 001 " + client.getNick() + " :Welcome to the server\r\n");
 		}
 }
 
