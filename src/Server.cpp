@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 16:04:04 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/29 20:10:48 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -169,7 +169,7 @@ void	Server::Run()
 
 int Server::connectionHandshake(Client& client, std::vector<std::string> messages) {
 
-	std::cout << "Connection Handshake......." << std::endl;
+	std::cout << "[Zorg] Connection Handshake......." << std::endl;
 	for(const std::string& message : messages) {
 		std::istringstream stream(message);
 		std::string command;
@@ -348,8 +348,11 @@ void Server::Nick(Client& client, const std::string& message)
 	// All is good. Set nick
 	std::string oldNickname = client.getNick();
 	client.setNick(newNickname);
-	SendToClient(client, ":" + oldNickname + "!" + client.getUser() + "@" + client.getHost() + " NICK " + client.getNick() + "\r\n");
-
+	if (oldNickname == "*" || oldNickname.empty())
+		SendToClient(client, ":" + _name + " 001 " + newNickname + " :Welcome to the IRC server\r\n");
+	// else
+	// 	SendToClient(client, ":" + oldNickname + "!" + client.getUser() + "@" + client.getHost() + " NICK :" + client.getNick() + "\r\n");
+		
 	// NOT IMPLEMENTED
 	// ERR_NICKCOLLISION not implemented
 			//-> same nickname in two servers
@@ -392,17 +395,17 @@ void Server::Ping(Client& client, const std::string& message)
 	if (pos == std::string::npos || pos + 1 >= message.size())
 	
 	{
-	    SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\n");
+	    SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\r\n");
 		return;
 	}
 	std::string server1 = message.substr(pos + 1);
 	if (server1.empty())
 	{
-		SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\n");
+		SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\r\n");
 		return;
 	}
 	//PONG response.
-	SendToClient(client, "PONG " + server1 + "\n");
+	SendToClient(client, "PONG " + server1 + "\r\n");
 }
 
 void Server::Mode(Client& client, const std::string& message)
@@ -413,12 +416,12 @@ void Server::Mode(Client& client, const std::string& message)
 
 	if (nickname != client.getNick())
 	{
-		SendToClient(client, ":server 502 ERR_USERSDONTMATCH :Cannot change mode for another user\n");
+		SendToClient(client, ":server 502 ERR_USERSDONTMATCH :Cannot change mode for another user\r\n");
 		return;
 	}
 	if (modeChanges.empty())
 	{
-		SendToClient(client, ":server 221 RPL_UMODEIS " + client.getModes() + "\n");
+		SendToClient(client, ":server 221 RPL_UMODEIS " + client.getModes() + "\r\n");
         return;
 	}
 	bool adding = true;
@@ -438,7 +441,7 @@ void Server::Mode(Client& client, const std::string& message)
 				client.removeMode(ch);
 		}
 		else
-			SendToClient(client, ":server 501 ERR_UMODEUNKNOWNFLAG :Unknown mode flag\n");
+			SendToClient(client, ":server 501 ERR_UMODEUNKNOWNFLAG :Unknown mode flag\r\n");
 	}
 }
 
