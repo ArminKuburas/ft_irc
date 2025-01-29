@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 20:10:48 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/29 20:35:09 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,7 @@ void Server::initializeCommandHandlers()
 	_commands["QUIT"] = [this](Client& client, const std::string& message) 		{Quit(client, message); };
 	_commands["PASS"] = [this](Client& client, const std::string& message) 		{Pass(client, message); };
 	_commands["STATS"] = [this](Client& client, const std::string& message) 		{Stats(client, message); };
+	_commands["WHOIS"] = [this](Client& client, const std::string& message) { Whois(client, message); };
 }
 
 Server::~Server()
@@ -341,17 +342,17 @@ void Server::Nick(Client& client, const std::string& message)
 	// Check if nickname is already in use
 	for (const auto& existingClient : _clients) {
 		if (existingClient.getNick() == newNickname) {
-			SendToClient(client, ":" + _name + " 433 * " + client.getNick() + " :Nickname is already in use\r\n");
-			return;
+				SendToClient(client, ":" + _name + " 433 * " + client.getNick() + " :Nickname is already in use\r\n");
+				return;
+			}
 		}
-	}
 	// All is good. Set nick
 	std::string oldNickname = client.getNick();
 	client.setNick(newNickname);
-	if (oldNickname == "*" || oldNickname.empty())
-		SendToClient(client, ":" + _name + " 001 " + newNickname + " :Welcome to the IRC server\r\n");
+	// if (oldNickname == "*" || oldNickname.empty())
+	// 	SendToClient(client, ":" + _name + " 001 " + newNickname + " :Welcome to the IRC server\r\n");
 	// else
-	// 	SendToClient(client, ":" + oldNickname + "!" + client.getUser() + "@" + client.getHost() + " NICK :" + client.getNick() + "\r\n");
+	SendToClient(client, ":" + oldNickname + "!" + client.getUser() + "@" + client.getHost() + " NICK :" + client.getNick() + "\r\n");
 		
 	// NOT IMPLEMENTED
 	// ERR_NICKCOLLISION not implemented
@@ -387,6 +388,36 @@ void Server::User(Client& client, const std::string& message)
 	if (client.getAuthentication() && !client.getNick().empty() && !client.getUser().empty()) {
 			SendToClient(client, ":" + _name + " 001 " + client.getNick() + " :Welcome to the server\r\n");
 		}
+}
+
+void Server::Whois(Client& client, const std::string& message)
+{
+	std::istringstream stream(message);
+	std::string command, target;
+	stream >> command >> target;
+
+	if (target.empty()) {
+		SendToClient(client, ":" + _name + " 431 " + client.getNick() + " :No nickname given\r\n");
+		return;
+	}
+
+	// Find target client
+	auto targetClient = std::find_if(_clients.begin(), _clients.end(),
+		[&target](const Client& c) { return c.getNick() == target; });
+
+	if (targetClient == _clients.end()) {
+		SendToClient(client, ":" + _name + " 401 " + client.getNick() + " " + target + " :No such nick/channel\r\n");
+		return;
+	}
+
+	// Send RPL_WHOISUSER (311)
+	SendToClient(client, ":" + _name + " 311 " + client.getNick() + " " + targetClient->getNick() + " " + targetClient->getUser() + " " + targetClient->getHost() + " * :" + targetClient->getRealname() + "\r\n");
+
+	// Send RPL_WHOISSERVER (312)
+	SendToClient(client, ":" + _name + " 312 " + client.getNick() + " " + targetClient->getNick() + " " + _name + " :IRC Server\r\n");
+
+	// Send RPL_ENDOFWHOIS (318)
+	SendToClient(client, ":" + _name + " 318 " + client.getNick() + " " + targetClient->getNick() + " :End of /WHOIS list\r\n");
 }
 
 void Server::Ping(Client& client, const std::string& message)

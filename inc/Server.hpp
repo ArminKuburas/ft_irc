@@ -87,6 +87,7 @@ class Server
 		void Priv(Client& client, const std::string& message);
 		int  Pass(Client& client, const std::string& message);
 		void Stats(Client& client, const std::string& message);
+		void Whois(Client& client, const std::string& message);
 
 		void initializeCommandHandlers();
 		std::vector<std::string> splitMessages(const std::string& message);
