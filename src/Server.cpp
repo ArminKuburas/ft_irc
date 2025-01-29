@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 20:35:09 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/29 21:00:18 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -149,7 +149,7 @@ void	Server::Run()
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
 
 						std::vector<std::string> messages = splitMessages(receivedData);
-						if (!client->getAuthentication()) {
+						if (!client->getRegistration()) {
 							int grant_access = connectionHandshake(*client, messages); // Pass individual message
 							if (!grant_access) {
 								disconnectClient(*client);
@@ -205,7 +205,12 @@ int Server::connectionHandshake(Client& client, std::vector<std::string> message
 			SendToClient(client, ":" + _name + " 421 " + command + " :Unknown command\r\n");
 		}
 	}
-    return 1;
+	// Register user
+	if(client.getAuthentication() && !client.getNick().empty() && !client.getUser().empty()){
+		client.setRegistration(true);
+		SendToClient(client, ":" + _name + " 001 " + client.getNick() + " :Welcome to the server\r\n");
+	}
+	return 1;
 }
 
 void Server::Stats(Client& client, const std::string& message){
@@ -342,16 +347,13 @@ void Server::Nick(Client& client, const std::string& message)
 	// Check if nickname is already in use
 	for (const auto& existingClient : _clients) {
 		if (existingClient.getNick() == newNickname) {
-				SendToClient(client, ":" + _name + " 433 * " + client.getNick() + " :Nickname is already in use\r\n");
+				SendToClient(client, ":" + _name + " 433 * " + newNickname + " :Nickname is already in use\r\n");
 				return;
 			}
 		}
 	// All is good. Set nick
 	std::string oldNickname = client.getNick();
 	client.setNick(newNickname);
-	// if (oldNickname == "*" || oldNickname.empty())
-	// 	SendToClient(client, ":" + _name + " 001 " + newNickname + " :Welcome to the IRC server\r\n");
-	// else
 	SendToClient(client, ":" + oldNickname + "!" + client.getUser() + "@" + client.getHost() + " NICK :" + client.getNick() + "\r\n");
 		
 	// NOT IMPLEMENTED
@@ -384,10 +386,6 @@ void Server::User(Client& client, const std::string& message)
 	}
 	client.setUser(username);
 	client.setRealname(realname);
-	// Check if registration is complete (PASS + NICK + USER)
-	if (client.getAuthentication() && !client.getNick().empty() && !client.getUser().empty()) {
-			SendToClient(client, ":" + _name + " 001 " + client.getNick() + " :Welcome to the server\r\n");
-		}
 }
 
 void Server::Whois(Client& client, const std::string& message)

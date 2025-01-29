@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 20:39:01 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/29 20:56:26 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,6 +64,14 @@ void Client::setAuthentication(bool auth){
 
 bool Client::getAuthentication() const{
 	return this->_isAuthenticated;
+}
+
+void Client::setRegistration(bool reg){
+	this->_isRegistered = reg;
+}
+
+bool Client::getRegistration() const{
+	return this->_isRegistered;
 }
 
 
