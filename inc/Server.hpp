@@ -73,6 +73,7 @@ class Server
 		void handleMessage(Client& client, const std::string& message);
 		int connectionHandshake(Client& client, std::vector<std::string> messages);
 
+
 		// Command handlers
 		void Ping(Client& client, const std::string& message);
 		void Pong(Client& client, const std::string& message);
@@ -84,6 +85,7 @@ class Server
 		void Quit(Client& client, const std::string& message);
 		void Priv(Client& client, const std::string& message);
 		int  Pass(Client& client, const std::string& message);
+		void Stats(Client& client, const std::string& message);
 
 		void initializeCommandHandlers();
 		std::vector<std::string> splitMessages(const std::string& message);

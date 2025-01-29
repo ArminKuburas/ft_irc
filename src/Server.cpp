@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/28 21:00:46 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/29 10:41:44 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,7 @@ void Server::initializeCommandHandlers()
 	_commands["JOIN"] = [this](Client& client, const std::string& message)		{Join(client, message); };
 	_commands["QUIT"] = [this](Client& client, const std::string& message) 		{Quit(client, message); };
 	_commands["PASS"] = [this](Client& client, const std::string& message) 		{Pass(client, message); };
+	_commands["STATS"] = [this](Client& client, const std::string& message) 		{Stats(client, message); };
 }
 
 Server::~Server()
@@ -218,14 +219,26 @@ int Server::connectionHandshake(Client& client, std::vector<std::string> message
 		} else {
 			SendToClient(client, ":" + _name + " 421 " + command + " :Unknown command\r\n");
 		}
-
-		// Check if registration is complete (PASS + NICK + USER)
-		if (client.getAuthentication() && !client.getNick().empty() && !client.getUser().empty()) {
-		    SendToClient(client, ":" + _name + " 001 " + client.getNick() + " :Welcome to the server\r\n");
-		}
 	}
-
     return 1;
+}
+
+void Server::Stats(Client& client, const std::string& message){
+	std::istringstream stream(message);
+	std::string command, stat_option;
+	stream >> command >> stat_option;
+
+	if(stat_option.empty()){
+		SendToClient(client, ":" + _name + " You need to provide a specific stats option [N]\r\n");
+	}
+	if(stat_option ==  "N"){
+		for (const auto& clients : _clients)
+		{
+			SendToClient(client, ":" + _name + " STATS N " + std::to_string(clients.getClientFd()) + " :" + clients.getNick() + "\r\n");
+		}
+		SendToClient(client, ":" + _name + " 219 " + stat_option + " :End of /STATS report\r\n");
+	}else
+		SendToClient(client, ":" + _name + " Invalid stats option\r\n");
 }
 
 std::vector<std::string> Server::splitMessages(const std::string& message)
@@ -280,12 +293,20 @@ void Server::handleMessage(Client& client, const std::string& message)
 
 void Server::SendToClient(Client& client, const std::string& message)
 {
+	if (client.getClientFd() == -1) {
+		std::cerr << "[Zorg] Invalid file descriptor for client " << client.getClientFd() << std::endl;
+	return;
+	}
 	ssize_t bytes_sent = send(client.getClientFd(), message.c_str(), message.size(), 0);
 	if (bytes_sent < 0) {
-		perror("send failed");
+		std::cerr << "[Zorg] Send failed. Error code: " << errno << " - " << strerror(errno) << std::endl;
 	}
 	else {
 		std::cout << client.getClientFd() << " << " << message;
+	}
+	// check that the whole message was sent
+	if (bytes_sent != static_cast<ssize_t>(message.size())) {
+		std::cerr << "[Zorg] Warning: Not all bytes were sent to " << client.getClientFd() << std::endl;
 	}
 }
 
@@ -297,8 +318,7 @@ void Server::Cap(Client& client, const std::string& message)
 
 void Server::Nick(Client& client, const std::string& message)
 {
-	std::string nickname;
-	std::string command;
+	std::string command, nickname;
 	std::istringstream stream(message);
 	stream >> command >> nickname;
 	if (nickname.empty()) {
@@ -334,7 +354,10 @@ void Server::User(Client& client, const std::string& message)
 	}
 	client.setUser(username);
 	client.setRealname(realname);
-	//std::cout << realname << std::endl;
+	// Check if registration is complete (PASS + NICK + USER)
+	if (client.getAuthentication() && !client.getNick().empty() && !client.getUser().empty()) {
+		    SendToClient(client, ":" + _name + " 001 " + client.getNick() + " :Welcome to the server\r\n");
+		}
 }
 
 void Server::Ping(Client& client, const std::string& message)
