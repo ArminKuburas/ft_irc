@@ -44,6 +44,7 @@ class Server
 		std::vector<Client>						_clients;
 		std::map<std::string, Channel> 			_channels;
 		std::map<std::string, CommandHelper>	_commands;
+		void disconnectClient(Client& client);
 		
 	public:
 		// constructor

@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 10:41:44 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/29 11:43:22 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -130,44 +130,28 @@ void	Server::Run()
                     ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer) - 1);
 					//std::cout << "Number of bytes read: " << bytes_read << std::endl;
                     if (bytes_read <= 0) {
-                        std::cout << "Client disconnected1: " << fds[i].fd << std::endl;
-						shutdown(fds[i].fd, SHUT_WR);
-                        close(fds[i].fd);
-                        _clients.erase(std::remove_if(_clients.begin(), _clients.end(),
-                            [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; }),
-                            _clients.end());
-                        fds[i] = fds[--nfds];
-                        --i;
-                    } else {
-                        buffer[bytes_read] = '\0';
+                        std::cout << "[Zorg] Disconnecting client: " << fds[i].fd << std::endl;
+						for (auto& client : _clients)
+						{
+							if(client.getClientFd() == fds[i].fd){
+								disconnectClient(client);
+								break;
+							}
+						}
+						fds[i] = fds[--nfds];
+						--i;
+					} else {
+						buffer[bytes_read] = '\0';
 						std::string receivedData(buffer);
 
 						// Identify which client sent the message using the fd
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
 
-						// Buffer handling???
-						// client->appendToBuffer(receivedData);
-						// // Split complete messages (ending with \r\n)
-						// std::vector<std::string> messages;
-						// size_t pos;
-						// while ((pos = client->getBuffer().find("\r\n")) != std::string::npos) {
-						// 	std::string message = client->getBuffer().substr(0, pos);
-						// 	messages.push_back(message);
-						// 	client->getBuffer().erase(0, pos + 2); // Remove processed message + \r\n
-						// }
-						// Process complete messages
 						std::vector<std::string> messages = splitMessages(receivedData);
 						if (!client->getAuthentication()) {
 							int grant_access = connectionHandshake(*client, messages); // Pass individual message
 							if (!grant_access) {
-								// Close connection immediately
-								SendToClient(*client, "ERROR :Closing Link: " + client->getNick() + " (Bad password)\r\n");
-								std::cout << "[Zorg] Client disconnected2: " << fds[i].fd << std::endl;
-								shutdown(client->getClientFd(), SHUT_WR);
-								close(client->getClientFd());
-								_clients.erase(std::remove_if(_clients.begin(), _clients.end(),
-									[fd = fds[i].fd](const Client& c) { return c.getClientFd() == fd; }), _clients.end());
-								fds[i] = fds[--nfds];
+								disconnectClient(*client);
 								--i;
 							}
 						} else {
@@ -308,6 +292,14 @@ void Server::SendToClient(Client& client, const std::string& message)
 	if (bytes_sent != static_cast<ssize_t>(message.size())) {
 		std::cerr << "[Zorg] Warning: Not all bytes were sent to " << client.getClientFd() << std::endl;
 	}
+}
+
+void Server::disconnectClient(Client& client) {
+	SendToClient(client, "ERROR :Closing Link: " + client.getNick() + " (Client Quit)\r\n");
+	shutdown(client.getClientFd(), SHUT_WR);
+	close(client.getClientFd());
+	_clients.erase(std::remove_if(_clients.begin(), _clients.end(),
+		[fd = client.getClientFd()](const Client& c) { return c.getClientFd() == fd; }), _clients.end());
 }
 
 void Server::Cap(Client& client, const std::string& message)
@@ -459,7 +451,7 @@ void Server::Priv(Client& client, const std::string& message)
 
 void Server::Quit(Client& client, const std::string& message)
 {
-	std::string quitMessage = "Client has disconnected";
+	std::string quitMessage = "[Zorg] Client has disconnected";
 	if (!message.empty())
 	{
 		quitMessage = message;
@@ -472,7 +464,7 @@ void Server::Quit(Client& client, const std::string& message)
 		if (c.getNick() != client.getNick())
 			SendToClient(c, quitBroadcast);
 	}
-	std::cout << "Client " << client.getNick() << " has disconnected\n";
+	std::cout << "[Zorg] Client " << client.getNick() << " has disconnected\n";
 }
 
 void Server::Join(Client& client, const std::string& message)
