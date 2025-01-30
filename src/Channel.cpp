@@ -98,7 +98,7 @@ void Channel::setInviteOnly( bool isInviteOnly )
 void Channel::addMember(Client* client)
 {
 	if (_members.empty())
-		addOperator(client);
+		_operators.emplace(client);
 	_members.emplace(client);
 }
 
@@ -113,37 +113,35 @@ bool Channel::removeMember(Client* client)
 	return (false);
 }
 
-bool Channel::addOperator(Client* client)
+bool Channel::addOperator(Client* channelOperator, Client* target)
 {
-	for (auto it = _operators.begin(); it != _operators.end(); ++it)
+	if (!this->noOperators())
 	{
-		Client* existingClient = *it;
-
-		if (existingClient->getUser() == client->getUser())
-		{
-			return (true);
-		}
+		if (!this->isOperator(channelOperator) || !this->isMember(channelOperator)
+			|| !this->isMember(target) || this->isOperator(target))
+			return (false);
 	}
-	_operators.emplace(client);
-	return (false);
+	_operators.emplace(target);
+	return (true);
 }
 
-bool Channel::removeOperator(Client* client)
+bool	Channel::removeOperator(Client* channelOperator, Client* target, bool leaving)
 {
-	auto it = _operators.find(client);
-	if (it != _operators.end())
+	if (leaving)
 	{
-		_operators.erase(it);
-		return (true);
+		if (!this->isOperator(channelOperator) || !this->isMember(channelOperator))
+			return (false);
+		_operators.erase(channelOperator);
 	}
-	return (false);
+	if (!this->isOperator(channelOperator) || !this->isMember(channelOperator)
+		|| !this->isMember(target) || !this->isOperator(target))
+		return (false);
+	_operators.erase(target);
+	return (true);
 }
-
-// Channel settings
-
 
 // Utility
-bool Channel::isMember(Client* client) const
+bool	Channel::isMember(Client* client) const
 {
 	for (auto it = _members.begin(); it != _members.end(); ++it)
 	{
@@ -155,7 +153,7 @@ bool Channel::isMember(Client* client) const
 	return (false);
 }
 
-bool Channel::isOperator(Client* client) const
+bool	Channel::isOperator(Client* client) const
 {
 	for (auto it = _operators.begin(); it != _operators.end(); ++it)
 	{
@@ -167,9 +165,25 @@ bool Channel::isOperator(Client* client) const
 	return (false);
 }
 
-bool Channel::isChannelEmpty() const
+bool	Channel::isChannelEmpty() const
 {
 	if (_members.empty())
 		return (true);
 	return (false);
 }
+
+bool	Channel::noOperators() const
+{
+	if (_operators.empty())
+		return (true);
+	return (false);
+}
+
+
+/** TO DO: 
+ * 
+ * 1. Manage to add operators after creation of the server (in mode +o the syntax is: /mode #channel +o <user>)
+ * 2. Check for no operators left in the server and make the first of the list operator
+ * 3. Add password functionality to server. Before and after server creation.
+ * 
+*/

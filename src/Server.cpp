@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 13:33:59 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/30 14:41:27 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -414,6 +414,7 @@ void Server::Join(Client& client, const std::string& message)
 		_channels.emplace(channel, newChannel);
 		it = _channels.find(channel);
 	}
+	// For when the user inputs a server that has a key
 	// if (!key.empty())
 	// {
 		
@@ -429,7 +430,7 @@ void Server::Join(Client& client, const std::string& message)
 		namesList += "\r\n";
 		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "Members: " + namesList + "\r\n", &client, true);
 		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "Topic: " + it->second.getTopic() + "\r\n", &client, true);
-		std::cout << "Client has entered channel" << it->second.getName() << std::endl;
+		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "has joined the channel\r\n", &client, false);
 	}
 }
 
@@ -443,17 +444,13 @@ void Server::SendToChannel(const std::string& channelName, const std::string& me
 	{
 		if (it->second.isMember(sender))
 			SendToClient(*sender, message);
+		return ;
 	}
 
 	for (Client* member : it->second.getMembers())
 	{
 		if (member != sender)
 		{
-			if (justJoined)
-			{
-				const std::string join_message = sender->getNick() + " has joined the chat";
-				SendToClient(*member, join_message);
-			}
 			if (it->second.isMember(sender))
 				SendToClient(*member, message);
 		}
@@ -476,10 +473,25 @@ void Server::Part(Client& client, const std::string& message)
 	// we did not find any channel
 	if (it == _channels.end()) 
 	{
-		SendToClient(client, "ERR_NOSUCHCHANNEL " + client.getNick() + " " + channel + ": Invalid channel name\r\n");
+		SendToClient(client, ":ERR_NOSUCHCHANNEL " + client.getNick() + " " + channel + ": Invalid channel name\r\n");
 		return ;
 	}
 	it->second.removeMember(&client);
+	if (it->second.isOperator(&client))
+	{
+		it->second.removeOperator(&client, nullptr, true);
+		// case for when there are no operators left on the channel but there are still members in there
+		if (it->second.noOperators())
+		{
+			for (Client* member : it->second.getMembers())
+			{
+				// first possible members is the new operator
+				it->second.addOperator(nullptr, member);
+				break ;
+			}
+			SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + client.getNick() + " was the last operator and left. First of the list has been made operator" + "\r\n", &client, true);
+		}
+	}
 	SendToClient(client, ":" + client.getNick() + " PART " + channel + "\r\n");
 	if (it->second.isChannelEmpty())
 		_channels.erase(channel);

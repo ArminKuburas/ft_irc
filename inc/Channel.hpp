@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/18 11:18:19 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 09:38:46 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/30 11:02:47 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,14 +48,15 @@ class Channel
 		void					setInviteOnly(bool isInviteOnly);
 
 		// Membership management
-		bool					addOperator(Client* client);
 		void					addMember(Client* client);
 		bool					removeMember(Client* client);
-		bool					removeOperator(Client* client);
+		bool					addOperator(Client* channelOperator, Client* target);
+		bool					removeOperator(Client* channelOperator, Client* target, bool leaving);
 		
 		// Utility
 		bool 					isMember(Client* client) const;
 		bool 					isOperator(Client* client) const;
 		bool					isChannelEmpty() const;
+		bool					noOperators() const;
 
 };
