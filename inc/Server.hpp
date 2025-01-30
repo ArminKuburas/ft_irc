@@ -54,14 +54,14 @@ class Server
 		~Server();
 
 		// getters
-		int			getPort();
-		int			getSocket();
-		const sockaddr_in	&getServerAddr() const;
+		int							getPort();
+		int							getSocket();
+		const sockaddr_in&			getServerAddr() const;
 		// pollfd		*getFdPoll();
 
 		// setters
-		void		setSocket( int socket );
-		void		setServerAddr();
+		void						setSocket( int socket );
+		void						setServerAddr();
 
 
 		// public methods
@@ -88,8 +88,10 @@ class Server
 		int  Pass(Client& client, const std::string& message);
 		void Stats(Client& client, const std::string& message);
 		void Whois(Client& client, const std::string& message);
+    void Part(Client& client, const std::string& message);
 
-		void initializeCommandHandlers();
-		std::vector<std::string> splitMessages(const std::string& message);
+
+		void 						initializeCommandHandlers();
+		std::vector<std::string>	splitMessages(const std::string& message);
 
 };

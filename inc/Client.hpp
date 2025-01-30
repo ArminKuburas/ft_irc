@@ -21,7 +21,7 @@ class Client
 		std::string			_clientHost;
 		int 				_clientFd;
 		socklen_t			_clientAddrLen;
-		struct pollfd		*_fds;
+		struct pollfd*		_fds;
 		std::string			_nick;
 		std::string			_user;
 		std::string			_realName;

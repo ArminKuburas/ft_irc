@@ -97,7 +97,6 @@ void Channel::setInviteOnly( bool isInviteOnly )
 // Membership management
 void Channel::addMember(Client* client)
 {
-	// if the member is the first to enter the server, we shall call addOperator
 	if (_members.empty())
 		addOperator(client);
 	_members.emplace(client);
@@ -105,10 +104,10 @@ void Channel::addMember(Client* client)
 
 bool Channel::removeMember(Client* client)
 {
-	auto it = _operators.find(client);
-	if (it != _operators.end())
+	auto it = _members.find(client);
+	if (it != _members.end())
 	{
-		_operators.erase(it);
+		_members.erase(it);
 		return (true);
 	}
 	return (false);
@@ -120,7 +119,7 @@ bool Channel::addOperator(Client* client)
 	{
 		Client* existingClient = *it;
 
-		if ((existingClient->getNick() == client->getNick() || existingClient->getUser() == client->getNick()) && (existingClient->getClientFd() == client->getClientFd()))
+		if (existingClient->getUser() == client->getUser())
 		{
 			return (true);
 		}
@@ -138,7 +137,6 @@ bool Channel::removeOperator(Client* client)
 		return (true);
 	}
 	return (false);
-
 }
 
 // Channel settings
@@ -151,7 +149,7 @@ bool Channel::isMember(Client* client) const
 	{
 		Client* possibleMember = *it;
 
-		if ((possibleMember->getNick() == client->getNick() || possibleMember->getUser() == client->getNick()) && (possibleMember->getClientFd() == client->getClientFd()))
+		if ((possibleMember->getClientFd() == client->getClientFd()))
 			return (true);
 	}
 	return (false);
@@ -163,8 +161,15 @@ bool Channel::isOperator(Client* client) const
 	{
 		Client* possibleOperator = *it;
 		
-		if ((possibleOperator->getNick() == client->getNick() || possibleOperator->getUser() == client->getNick()) && (possibleOperator->getClientFd() == client->getClientFd()))
+		if (possibleOperator->getClientFd() == client->getClientFd())
 			return (true);
 	}
+	return (false);
+}
+
+bool Channel::isChannelEmpty() const
+{
+	if (_members.empty())
+		return (true);
 	return (false);
 }
