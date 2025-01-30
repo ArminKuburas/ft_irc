@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/30 14:41:27 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/30 15:56:31 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -410,17 +410,18 @@ void Server::Join(Client& client, const std::string& message)
 	// we did not find any channel
 	if (it == _channels.end()) 
 	{
-		Channel newChannel(channel, "na", false, false);
+		Channel newChannel(channel, key, "na", false, false);
 		_channels.emplace(channel, newChannel);
 		it = _channels.find(channel);
 	}
-	// For when the user inputs a server that has a key
-	// if (!key.empty())
-	// {
-		
-	// }
-	
-	it->second.addMember(&client);
+	// key/password check 
+	if (it->second.getKey() == key)
+		it->second.addMember(&client);
+	else
+	{
+		SendToClient(client, ":ERR_BADCHANNELKEY " + client.getNick() + " " + channel + ": Invalid key\r\n");
+		return ;
+	}
 	if (it->second.isMember(&client))
 	{
 		SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
@@ -476,7 +477,6 @@ void Server::Part(Client& client, const std::string& message)
 		SendToClient(client, ":ERR_NOSUCHCHANNEL " + client.getNick() + " " + channel + ": Invalid channel name\r\n");
 		return ;
 	}
-	it->second.removeMember(&client);
 	if (it->second.isOperator(&client))
 	{
 		it->second.removeOperator(&client, nullptr, true);
@@ -492,6 +492,7 @@ void Server::Part(Client& client, const std::string& message)
 			SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + client.getNick() + " was the last operator and left. First of the list has been made operator" + "\r\n", &client, true);
 		}
 	}
+	it->second.removeMember(&client);
 	SendToClient(client, ":" + client.getNick() + " PART " + channel + "\r\n");
 	if (it->second.isChannelEmpty())
 		_channels.erase(channel);

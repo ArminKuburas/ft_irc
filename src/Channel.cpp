@@ -10,9 +10,10 @@
 
 #include "../inc/Channel.hpp"
 
-Channel::Channel(const std::string &name, const std::string &topic, bool IsPrivate, bool isInviteOnly )
+Channel::Channel(const std::string &name, const std::string &key, const std::string &topic, bool IsPrivate, bool isInviteOnly )
 {
 	setName(name);
+	setKey(key);
 	setTopic(topic);
 	setPrivate(IsPrivate);
 	setInviteOnly(isInviteOnly);
@@ -20,7 +21,6 @@ Channel::Channel(const std::string &name, const std::string &topic, bool IsPriva
 
 Channel::~Channel()
 {
-	
 }
 
 // Channel::Channel( const Channel& ref )
@@ -46,6 +46,11 @@ Channel::~Channel()
 const std::string Channel::getName() const
 {
 	return (_name);
+}
+
+const std::string Channel::getKey() const
+{
+	return (_key);
 }
 
 const std::string Channel::getTopic() const
@@ -77,6 +82,11 @@ const bool& Channel::getIsInviteOnly() const
 void Channel::setName( const std::string& name )
 {
 	_name = name;
+}
+
+void Channel::setKey( const std::string& key )
+{
+	_key = key;
 }
 
 void Channel::setTopic( const std::string& newTopic )
@@ -117,9 +127,13 @@ bool Channel::addOperator(Client* channelOperator, Client* target)
 {
 	if (!this->noOperators())
 	{
+		std::cout << "we got inside the no operator clause, which shouldn't happen" << std::endl;
 		if (!this->isOperator(channelOperator) || !this->isMember(channelOperator)
 			|| !this->isMember(target) || this->isOperator(target))
+		{
+			std::cout << "we got inside the clause " << std::endl;
 			return (false);
+		}
 	}
 	_operators.emplace(target);
 	return (true);
@@ -132,11 +146,21 @@ bool	Channel::removeOperator(Client* channelOperator, Client* target, bool leavi
 		if (!this->isOperator(channelOperator) || !this->isMember(channelOperator))
 			return (false);
 		_operators.erase(channelOperator);
+		return (true);
 	}
 	if (!this->isOperator(channelOperator) || !this->isMember(channelOperator)
 		|| !this->isMember(target) || !this->isOperator(target))
 		return (false);
 	_operators.erase(target);
+	return (true);
+}
+
+bool	Channel::changeKey( Client* channelOperator, std::string newKey )
+{
+	if (!this->isMember(channelOperator) || !this->isOperator(channelOperator)
+		|| newKey == this->_key)
+		return (false);
+	this->setKey(newKey);
 	return (true);
 }
 
