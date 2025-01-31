@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 21:00:18 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/31 13:26:42 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -575,10 +575,9 @@ void Server::Join(Client& client, const std::string& message)
 		std::string namesList;
 		for (Client* member : it->second.getMembers())
 			namesList += member->getNick() + " ";
-		namesList += "\r\n";
 		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "Members: " + namesList + "\r\n", &client, true);
 		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "Topic: " + it->second.getTopic() + "\r\n", &client, true);
-		std::cout << "Client has entered channel" << it->second.getName() << std::endl;
+		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "has joined #" + channel + "\r\n", &client, true);
 	}
 }
 
