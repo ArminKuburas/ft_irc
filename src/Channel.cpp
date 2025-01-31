@@ -78,6 +78,16 @@ const bool& Channel::getIsInviteOnly() const
 	return (_isInviteOnly);
 }
 
+std::string Channel::getModes() const
+{
+	std::string modes;
+	for (char mode : this->_channelModes)
+	{
+		modes += mode;
+	}
+	return (modes);
+}
+
 // Setters
 void Channel::setName( const std::string& name )
 {
@@ -102,6 +112,11 @@ void Channel::setPrivate( bool isPrivate )
 void Channel::setInviteOnly( bool isInviteOnly )
 {
 	_isInviteOnly = isInviteOnly;
+}
+
+void Channel::setModes(char mode)
+{
+	this->_channelModes.insert(mode);
 }
 
 // Membership management
@@ -203,6 +218,15 @@ bool	Channel::noOperators() const
 	return (false);
 }
 
+bool	Channel::hasMode(char mode) const
+{
+	return (this->_channelModes.find(mode) != this->_channelModes.end());
+}
+
+void	Channel::removeMode(char mode)
+{
+	_channelModes.erase(mode);
+}
 
 /** TO DO: 
  * 
