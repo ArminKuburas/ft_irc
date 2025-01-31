@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/30 15:56:31 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/29 21:00:18 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,7 @@
 Server::Server(int port, std::string password)
 {
 	this->_port = port;
-	this->_password = password; // need to check for password match
+	this->_password = password;
 	initializeCommandHandlers();
 }
 
@@ -40,6 +40,9 @@ void Server::initializeCommandHandlers()
 	_commands["JOIN"] = [this](Client& client, const std::string& message)		{Join(client, message); };
 	_commands["PART"] = [this](Client& client, const std::string& message)		{Part(client, message); };
 	_commands["QUIT"] = [this](Client& client, const std::string& message) 		{Quit(client, message); };
+	_commands["PASS"] = [this](Client& client, const std::string& message) 		{Pass(client, message); };
+	_commands["STATS"] = [this](Client& client, const std::string& message) 		{Stats(client, message); };
+	_commands["WHOIS"] = [this](Client& client, const std::string& message) { Whois(client, message); };
 }
 
 Server::~Server()
@@ -103,6 +106,7 @@ void	Server::Run()
         for (int i = 0; i < nfds; ++i) {
             if (fds[i].revents & POLLIN) {
                 if (fds[i].fd == this->_serverSocket) {
+					// Handling incoming connection requests on the listening socket
                     // New client connection
                     struct sockaddr_in client_addr;
                     socklen_t client_addr_len = sizeof(client_addr);
@@ -123,26 +127,37 @@ void	Server::Run()
                     std::cout << "[" + this->_name +"] New client connected: " << client_fd << std::endl;
 					++nfds;
                 } else {
+					// Handling data on established client connections
                     char buffer[1024];
                     ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer) - 1);
+					//std::cout << "Number of bytes read: " << bytes_read << std::endl;
                     if (bytes_read <= 0) {
-                        std::cout << "Client disconnected: " << fds[i].fd << std::endl;
-                        close(fds[i].fd);
-                        _clients.erase(std::remove_if(_clients.begin(), _clients.end(),
-                            [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; }),
-                            _clients.end());
-                        fds[i] = fds[--nfds];
-                        --i;                
-                    } else {
-                        // Broadcast message to all clients
-                        buffer[bytes_read] = '\0';
+                        std::cout << "[Zorg] Disconnecting client: " << fds[i].fd << std::endl;
+						for (auto& client : _clients)
+						{
+							if(client.getClientFd() == fds[i].fd){
+								disconnectClient(client);
+								break;
+							}
+						}
+						fds[i] = fds[--nfds];
+						--i;
+					} else {
+						buffer[bytes_read] = '\0';
 						std::string receivedData(buffer);
+
+						// Identify which client sent the message using the fd
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
-						if (client != _clients.end()) {
-							std::vector<std::string> messages = splitMessages(receivedData);
-							for (const auto& message : messages)
-							{
-								std::cout << fds[i].fd << " >> " << message << std::endl;
+						std::vector<std::string> messages = splitMessages(receivedData);
+						if (!client->getRegistration()) {
+							int grant_access = connectionHandshake(*client, messages); // Pass individual message
+							if (!grant_access) {
+								disconnectClient(*client);
+								--i;
+							}
+						} else {
+							for(const std::string& message : messages) {
+								std::cout << client->getClientFd() << " >> " << message << std::endl;
 								handleMessage(*client, message);
 							}
 						}
@@ -151,6 +166,69 @@ void	Server::Run()
 			}
 		}
 	}
+}
+
+int Server::connectionHandshake(Client& client, std::vector<std::string> messages) {
+
+	std::cout << "[Zorg] Connection Handshake......." << std::endl;
+	for(const std::string& message : messages) {
+		std::istringstream stream(message);
+		std::string command;
+		stream >> command;
+		std::transform(command.begin(), command.end(), command.begin(), ::toupper);
+		
+		std::cout << client.getClientFd() << " >> " << message << std::endl;
+
+		if (command == "PASS") {
+			int grant_access = Server::Pass(client, message);
+			if (!grant_access) {
+				SendToClient(client, ":" + _name + " 464 * :Password incorrect\r\n");
+				return 0;
+			}
+			client.setAuthentication(true);
+		} else if (command == "NICK") {
+			// Only allow NICK/USER after PASS
+			if (!client.getAuthentication()) {
+				SendToClient(client, ":" + _name + " 451 * :You have not registered\r\n");
+				return 0;
+			}
+			Server::Nick(client, message);
+		} else if (command == "USER") {
+			if (!client.getAuthentication()) {
+				SendToClient(client, ":" + _name + " 451 * :You have not registered\r\n");
+				return 0;
+			}
+			Server::User(client, message);
+		} else if (command == "CAP") {
+			Server::Cap(client, message);
+		} else {
+			SendToClient(client, ":" + _name + " 421 " + command + " :Unknown command\r\n");
+		}
+	}
+	// Register user
+	if(client.getAuthentication() && !client.getNick().empty() && !client.getUser().empty()){
+		client.setRegistration(true);
+		SendToClient(client, ":" + _name + " 001 " + client.getNick() + " :Welcome to the server\r\n");
+	}
+	return 1;
+}
+
+void Server::Stats(Client& client, const std::string& message){
+	std::istringstream stream(message);
+	std::string command, stat_option;
+	stream >> command >> stat_option;
+
+	if(stat_option.empty()){
+		SendToClient(client, ":" + _name + " You need to provide a specific stats option [N]\r\n");
+	}
+	if(stat_option ==  "N"){
+		for (const auto& clients : _clients)
+		{
+			SendToClient(client, ":" + _name + " STATS N " + std::to_string(clients.getClientFd()) + " :" + clients.getNick() + "\r\n");
+		}
+		SendToClient(client, ":" + _name + " 219 " + stat_option + " :End of /STATS report\r\n");
+	}else
+		SendToClient(client, ":" + _name + " Invalid stats option\r\n");
 }
 
 std::vector<std::string> Server::splitMessages(const std::string& message)
@@ -199,19 +277,35 @@ void Server::handleMessage(Client& client, const std::string& message)
 	}
 	else
 	{
-		SendToClient(client, ":" +this->_name + " 421 * " + command + " :Unknown command\r\n");
+		SendToClient(client, ":" + this->_name + " 421 * " + command + " :Unknown command\r\n");
 	}
 }
 
 void Server::SendToClient(Client& client, const std::string& message)
 {
-	ssize_t bytes_sent = send(client.getClientFd(), message.c_str(), message.size(), 0);
+	if (client.getClientFd() == -1) {
+		std::cerr << "[Zorg] Invalid file descriptor for client " << client.getClientFd() << std::endl;
+	return;
+	}
+	ssize_t bytes_sent = send(client.getClientFd(), message.c_str(), message.length(), 0);
 	if (bytes_sent < 0) {
-		perror("send failed");
+		std::cerr << "[Zorg] Send failed. Error code: " << errno << " - " << strerror(errno) << std::endl;
 	}
 	else {
 		std::cout << client.getClientFd() << " << " << message;
 	}
+	// check that the whole message was sent
+	if (bytes_sent != static_cast<ssize_t>(message.size())) {
+		std::cerr << "[Zorg] Warning: Not all bytes were sent to " << client.getClientFd() << std::endl;
+	}
+}
+
+void Server::disconnectClient(Client& client) {
+	SendToClient(client, "ERROR :Closing Link: " + client.getNick() + " (Client Quit)\r\n");
+	shutdown(client.getClientFd(), SHUT_WR);
+	close(client.getClientFd());
+	_clients.erase(std::remove_if(_clients.begin(), _clients.end(),
+		[fd = client.getClientFd()](const Client& c) { return c.getClientFd() == fd; }), _clients.end());
 }
 
 void Server::Cap(Client& client, const std::string& message)
@@ -222,36 +316,62 @@ void Server::Cap(Client& client, const std::string& message)
 
 void Server::Nick(Client& client, const std::string& message)
 {
-	std::string nickname;
-	std::string command;
+	std::string command, newNickname;
 	std::istringstream stream(message);
-	stream >> command >> nickname;
-	if (nickname.empty()) {
-		SendToClient(client, ":" +this->_name + " 431 * NICK :No nickname given\r\n");
+	stream >> command >> newNickname;
+	if (newNickname.empty()) {
+		SendToClient(client, ":" +this->_name + " 431 " + client.getNick() + " :No nickname given\r\n");
 		return;
 	}
+	// Check if the nickname is valid
+	bool valid_nickname = true;
+	if(newNickname.length() > 9)
+		valid_nickname = false;
+	// First character must be a letter, '_' or '|
+	if (newNickname.empty() || !(isalpha(newNickname[0]) || newNickname[0] == '_' || newNickname[0] == '|')) {
+		valid_nickname = false;
+	}
+	// Check valid characters
+	for (char c : newNickname) {
+		if (!(isalnum(c) || c == '-' || c == '_' || c == '|' ||
+			  c == '[' || c == ']' || c == '\\' || c == '`' ||
+			  c == '^' || c == '{' || c == '}')) {
+			valid_nickname = false;
+		}
+	}
+	if(!valid_nickname){
+		SendToClient(client, ":" + _name + " 432 " + client.getNick() + " :Erroneous nickname\r\n");
+		return;
+	}
+
 	// Check if nickname is already in use
-    for (const auto& existingClient : _clients) {
-        if (existingClient.getNick() == nickname) {
-            SendToClient(client, ":" + this->_name + " 433 * " + nickname + " :Nickname is already in use\r\n");
-            return;
-        }
-    }
-
-	// Check that the user has not been registered yet
-	bool registered = client.getNick().empty();
-
-	// set nick
-	client.setNick(nickname);
-	SendToClient(client, ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " NICK " + client.getNick() + "\r\n");
-	
-	// welcome new users
-	if(registered)
-		SendToClient(client, ":" +this->_name + " 001 " + client.getNick() + " :Welcome to the IRC network, " + client.getNick() + "\r\n");
+	for (const auto& existingClient : _clients) {
+		if (existingClient.getNick() == newNickname) {
+				SendToClient(client, ":" + _name + " 433 * " + newNickname + " :Nickname is already in use\r\n");
+				return;
+			}
+		}
+	// All is good. Set nick
+	std::string oldNickname = client.getNick();
+	client.setNick(newNickname);
+	SendToClient(client, ":" + oldNickname + "!" + client.getUser() + "@" + client.getHost() + " NICK :" + client.getNick() + "\r\n");
+		
+	// NOT IMPLEMENTED
+	// ERR_NICKCOLLISION not implemented
+			//-> same nickname in two servers
+	// ERR_UNAVAILRESOURCE
+			//-> The requested nickname or channel is temporarily unavailable (e.g., a user just quit and their nickname is still reserved).
+	// ERR_RESTRICTED (484)
+			// ->  The client is on a restricted connection and cannot change their nickname or perform certain actions.
 }
 
 void Server::User(Client& client, const std::string& message)
 {
+	if(!client.getUser().empty()){
+		SendToClient(client, ":" + _name + " 462 "+ client.getNick() + " USER :You may not reregister\r\n");
+		return;
+	}
+
 	std::istringstream stream(message);
 	std::string command, username, hostname, servername, realname;
 
@@ -261,12 +381,41 @@ void Server::User(Client& client, const std::string& message)
 		realname = realname.substr(2);
 	if (username.empty())
 	{
-		SendToClient(client, ":" +this->_name + " 461 * USER :Not enough parameters\r\n");
+		SendToClient(client, ":" + _name + " 461 "+ client.getNick() + "USER :Not enough parameters\r\n");
 		return;
 	}
 	client.setUser(username);
 	client.setRealname(realname);
-	//std::cout << realname << std::endl;
+}
+
+void Server::Whois(Client& client, const std::string& message)
+{
+	std::istringstream stream(message);
+	std::string command, target;
+	stream >> command >> target;
+
+	if (target.empty()) {
+		SendToClient(client, ":" + _name + " 431 " + client.getNick() + " :No nickname given\r\n");
+		return;
+	}
+
+	// Find target client
+	auto targetClient = std::find_if(_clients.begin(), _clients.end(),
+		[&target](const Client& c) { return c.getNick() == target; });
+
+	if (targetClient == _clients.end()) {
+		SendToClient(client, ":" + _name + " 401 " + client.getNick() + " " + target + " :No such nick/channel\r\n");
+		return;
+	}
+
+	// Send RPL_WHOISUSER (311)
+	SendToClient(client, ":" + _name + " 311 " + client.getNick() + " " + targetClient->getNick() + " " + targetClient->getUser() + " " + targetClient->getHost() + " * :" + targetClient->getRealname() + "\r\n");
+
+	// Send RPL_WHOISSERVER (312)
+	SendToClient(client, ":" + _name + " 312 " + client.getNick() + " " + targetClient->getNick() + " " + _name + " :IRC Server\r\n");
+
+	// Send RPL_ENDOFWHOIS (318)
+	SendToClient(client, ":" + _name + " 318 " + client.getNick() + " " + targetClient->getNick() + " :End of /WHOIS list\r\n");
 }
 
 void Server::Ping(Client& client, const std::string& message)
@@ -275,17 +424,17 @@ void Server::Ping(Client& client, const std::string& message)
 	if (pos == std::string::npos || pos + 1 >= message.size())
 	
 	{
-	    SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\n");
+	    SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\r\n");
 		return;
 	}
 	std::string server1 = message.substr(pos + 1);
 	if (server1.empty())
 	{
-		SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\n");
+		SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\r\n");
 		return;
 	}
 	//PONG response.
-	SendToClient(client, "PONG " + server1 + "\n");
+	SendToClient(client, "PONG " + server1 + "\r\n");
 }
 
 void Server::Mode(Client& client, const std::string& message)
@@ -296,12 +445,12 @@ void Server::Mode(Client& client, const std::string& message)
 
 	if (nickname != client.getNick())
 	{
-		SendToClient(client, ":server 502 ERR_USERSDONTMATCH :Cannot change mode for another user\n");
+		SendToClient(client, ":server 502 ERR_USERSDONTMATCH :Cannot change mode for another user\r\n");
 		return;
 	}
 	if (modeChanges.empty())
 	{
-		SendToClient(client, ":server 221 RPL_UMODEIS " + client.getModes() + "\n");
+		SendToClient(client, ":server 221 RPL_UMODEIS " + client.getModes() + "\r\n");
         return;
 	}
 	bool adding = true;
@@ -321,7 +470,7 @@ void Server::Mode(Client& client, const std::string& message)
 				client.removeMode(ch);
 		}
 		else
-			SendToClient(client, ":server 501 ERR_UMODEUNKNOWNFLAG :Unknown mode flag\n");
+			SendToClient(client, ":server 501 ERR_UMODEUNKNOWNFLAG :Unknown mode flag\r\n");
 	}
 }
 
@@ -374,7 +523,7 @@ void Server::Priv(Client& client, const std::string& message)
 
 void Server::Quit(Client& client, const std::string& message)
 {
-	std::string quitMessage = "Client has disconnected";
+	std::string quitMessage = "[Zorg] Client has disconnected";
 	if (!message.empty())
 	{
 		quitMessage = message;
@@ -387,7 +536,7 @@ void Server::Quit(Client& client, const std::string& message)
 		if (c.getNick() != client.getNick())
 			SendToClient(c, quitBroadcast);
 	}
-	std::cout << "Client " << client.getNick() << " has disconnected\n";
+	std::cout << "[Zorg] Client " << client.getNick() << " has disconnected\n";
 }
 
 void Server::Join(Client& client, const std::string& message)
@@ -434,6 +583,31 @@ void Server::Join(Client& client, const std::string& message)
 		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "has joined the channel\r\n", &client, false);
 	}
 }
+
+int Server::Pass(Client& client, const std::string& message){
+	std::istringstream stream(message);
+	std::string command, password;
+
+	stream >> command >> password;
+	if(client.getAuthentication()){
+		SendToClient(client, ":" + _name + " 462 " + client.getNick() + " :You may not reregister\r\n");
+		return 0;
+	}
+
+	if(password.empty()){
+		SendToClient(client, _name + " 461 " + client.getNick() +  "PASS :Not enough parameters\r\n");
+		return 0;
+	}
+
+	if(password != _password){
+		SendToClient(client, _name + " 464 " + client.getNick() +  " :Password Incorrect\r\n");
+		return 0;
+	}
+	// no response message in case of correct PASS
+	std::cout << "[Zorg] password accepted" << std::endl;
+	return 1;
+}
+
 
 void Server::SendToChannel(const std::string& channelName, const std::string& message, Client* sender, bool justJoined)
 {
