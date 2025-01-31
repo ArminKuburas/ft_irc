@@ -10,9 +10,10 @@
 
 #include "../inc/Channel.hpp"
 
-Channel::Channel(const std::string &name, const std::string &topic, bool IsPrivate, bool isInviteOnly )
+Channel::Channel(const std::string &name, const std::string &key, const std::string &topic, bool IsPrivate, bool isInviteOnly )
 {
 	setName(name);
+	setKey(key);
 	setTopic(topic);
 	setPrivate(IsPrivate);
 	setInviteOnly(isInviteOnly);
@@ -20,7 +21,6 @@ Channel::Channel(const std::string &name, const std::string &topic, bool IsPriva
 
 Channel::~Channel()
 {
-	
 }
 
 // Channel::Channel( const Channel& ref )
@@ -46,6 +46,11 @@ Channel::~Channel()
 const std::string Channel::getName() const
 {
 	return (_name);
+}
+
+const std::string Channel::getKey() const
+{
+	return (_key);
 }
 
 const std::string Channel::getTopic() const
@@ -79,6 +84,11 @@ void Channel::setName( const std::string& name )
 	_name = name;
 }
 
+void Channel::setKey( const std::string& key )
+{
+	_key = key;
+}
+
 void Channel::setTopic( const std::string& newTopic )
 {
 	_topic = newTopic;
@@ -98,7 +108,7 @@ void Channel::setInviteOnly( bool isInviteOnly )
 void Channel::addMember(Client* client)
 {
 	if (_members.empty())
-		addOperator(client);
+		_operators.emplace(client);
 	_members.emplace(client);
 }
 
@@ -113,37 +123,49 @@ bool Channel::removeMember(Client* client)
 	return (false);
 }
 
-bool Channel::addOperator(Client* client)
+bool Channel::addOperator(Client* channelOperator, Client* target)
 {
-	for (auto it = _operators.begin(); it != _operators.end(); ++it)
+	if (!this->noOperators())
 	{
-		Client* existingClient = *it;
-
-		if (existingClient->getUser() == client->getUser())
+		std::cout << "we got inside the no operator clause, which shouldn't happen" << std::endl;
+		if (!this->isOperator(channelOperator) || !this->isMember(channelOperator)
+			|| !this->isMember(target) || this->isOperator(target))
 		{
-			return (true);
+			std::cout << "we got inside the clause " << std::endl;
+			return (false);
 		}
 	}
-	_operators.emplace(client);
-	return (false);
+	_operators.emplace(target);
+	return (true);
 }
 
-bool Channel::removeOperator(Client* client)
+bool	Channel::removeOperator(Client* channelOperator, Client* target, bool leaving)
 {
-	auto it = _operators.find(client);
-	if (it != _operators.end())
+	if (leaving)
 	{
-		_operators.erase(it);
+		if (!this->isOperator(channelOperator) || !this->isMember(channelOperator))
+			return (false);
+		_operators.erase(channelOperator);
 		return (true);
 	}
-	return (false);
+	if (!this->isOperator(channelOperator) || !this->isMember(channelOperator)
+		|| !this->isMember(target) || !this->isOperator(target))
+		return (false);
+	_operators.erase(target);
+	return (true);
 }
 
-// Channel settings
-
+bool	Channel::changeKey( Client* channelOperator, std::string newKey )
+{
+	if (!this->isMember(channelOperator) || !this->isOperator(channelOperator)
+		|| newKey == this->_key)
+		return (false);
+	this->setKey(newKey);
+	return (true);
+}
 
 // Utility
-bool Channel::isMember(Client* client) const
+bool	Channel::isMember(Client* client) const
 {
 	for (auto it = _members.begin(); it != _members.end(); ++it)
 	{
@@ -155,7 +177,7 @@ bool Channel::isMember(Client* client) const
 	return (false);
 }
 
-bool Channel::isOperator(Client* client) const
+bool	Channel::isOperator(Client* client) const
 {
 	for (auto it = _operators.begin(); it != _operators.end(); ++it)
 	{
@@ -167,9 +189,25 @@ bool Channel::isOperator(Client* client) const
 	return (false);
 }
 
-bool Channel::isChannelEmpty() const
+bool	Channel::isChannelEmpty() const
 {
 	if (_members.empty())
 		return (true);
 	return (false);
 }
+
+bool	Channel::noOperators() const
+{
+	if (_operators.empty())
+		return (true);
+	return (false);
+}
+
+
+/** TO DO: 
+ * 
+ * 1. Manage to add operators after creation of the server (in mode +o the syntax is: /mode #channel +o <user>)
+ * 2. Check for no operators left in the server and make the first of the list operator
+ * 3. Add password functionality to server. Before and after server creation.
+ * 
+*/
