@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/31 13:36:08 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/31 13:38:10 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -559,16 +559,18 @@ void Server::Join(Client& client, const std::string& message)
 	// we did not find any channel
 	if (it == _channels.end()) 
 	{
-		Channel newChannel(channel, "na", false, false);
+		Channel newChannel(channel, key, "na", false, false);
 		_channels.emplace(channel, newChannel);
 		it = _channels.find(channel);
 	}
-	// if (!key.empty())
-	// {
-		
-	// }
-	
-	it->second.addMember(&client);
+	// key/password check 
+	if (it->second.getKey() == key)
+		it->second.addMember(&client);
+	else
+	{
+		SendToClient(client, ":ERR_BADCHANNELKEY " + client.getNick() + " " + channel + ": Invalid key\r\n");
+		return ;
+	}
 	if (it->second.isMember(&client))
 	{
 		SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
@@ -577,7 +579,7 @@ void Server::Join(Client& client, const std::string& message)
 			namesList += member->getNick() + " ";
 		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "Members: " + namesList + "\r\n", &client, true);
 		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "Topic: " + it->second.getTopic() + "\r\n", &client, true);
-		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "has joined #" + channel + "\r\n", &client, true);
+		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "has joined #" + channel + "\r\n", &client, false);
 	}
 }
 
