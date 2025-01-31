@@ -70,7 +70,7 @@ class Server
 		void AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen );
 		void BroadcastMessage(std:: string &messasge);
 		void SendToClient(Client& client, const std::string& message);
-		void sendMessageToChannel(const std::string& channelName, const std::string& message, Client* sender);
+		void SendToChannel(const std::string& channelName, const std::string& message, Client* sender, bool justJoined);
 		void handleMessage(Client& client, const std::string& message);
 		int connectionHandshake(Client& client, std::vector<std::string> messages);
 
@@ -88,7 +88,7 @@ class Server
 		int  Pass(Client& client, const std::string& message);
 		void Stats(Client& client, const std::string& message);
 		void Whois(Client& client, const std::string& message);
-    void Part(Client& client, const std::string& message);
+    	void Part(Client& client, const std::string& message);
 
 
 		void 						initializeCommandHandlers();
