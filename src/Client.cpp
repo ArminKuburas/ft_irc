@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/21 11:12:14 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/01/29 20:56:26 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,6 +58,23 @@ void	Client::setClientFd( int clientFd )
 	this->_clientFd = clientFd;
 }
 
+void Client::setAuthentication(bool auth){
+	this->_isAuthenticated = auth;
+}
+
+bool Client::getAuthentication() const{
+	return this->_isAuthenticated;
+}
+
+void Client::setRegistration(bool reg){
+	this->_isRegistered = reg;
+}
+
+bool Client::getRegistration() const{
+	return this->_isRegistered;
+}
+
+
 					// char buffer[1024];
                     // ssize_t bytes_read = read(fds[nfds].fd, buffer, sizeof(buffer) - 1);
 					// buffer[bytes_read] = '\0';
@@ -85,6 +102,9 @@ void	Client::setNick( std::string nick )
 
 const std::string	Client::getNick() const
 {
+	// if(this->_nick.empty())
+	// 	return("*");
+	// else
 	return (this->_nick);
 }
 

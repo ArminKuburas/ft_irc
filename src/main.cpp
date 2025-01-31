@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fdessoy- <fdessoy-@student.42.fr>          +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:45 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/10 14:44:53 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/01/29 21:29:33 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -126,6 +126,7 @@ int main(int argc, char **argv)
 	}
 	std::cout << "Server is listening in non-blocking mode" << std::endl;
 	std::cout << "Port: " << port << std::endl;
+	std::cout << "Pass: " << password << std::endl;
 
 	irc_server.Run();	
 	return (0);
