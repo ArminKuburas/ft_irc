@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/31 17:03:54 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/01 22:20:19 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -482,8 +482,7 @@ void Server::Mode(Client& client, const std::string& message)
 	// target: user or channel (need to differentiate)
 	// modeChanges: flags +i +p +o +k
 	if (user)
-	{
-
+	{		
 		bool adding = true;
 		for (char ch : modeChanges)
 		{
@@ -491,7 +490,7 @@ void Server::Mode(Client& client, const std::string& message)
 				adding = true;
 			else if (ch == '-')
 				adding = false;
-			else if (ch == 'i')
+			else if (ch == 'i') // this works with or without the addition sign?!
 			{
 				if (adding)
 				{
@@ -504,15 +503,23 @@ void Server::Mode(Client& client, const std::string& message)
 			else
 			{
 				// ERR_UMODEUNKNOWNFLAG
-				SendToClient(client, ":" + _name + " 501 " + ":Unknown mode flag\r\n");
+				SendToClient(client, ":" + this->_name + " 501 " + ":Unknown mode flag\r\n");
 			}
 		}
 	}
 	else if (channel)
 	{
+		auto it = _channels.find(target);
+		if (it == _channels.end())
+		{
+			// ERR_BADCHANMASK
+			SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + target + ": invalid channel name" + "\r\n");
+			return ;
+		}
 		bool adding = true;
 		for (char ch : modeChanges)
 		{
+			const std::string serverName = it->second.getName();
 			if (ch == '+')
 				adding = true;
 			else if (ch == '-')
@@ -521,11 +528,66 @@ void Server::Mode(Client& client, const std::string& message)
 			{
 				if (adding)
 				{
-					client.addMode(ch);
-					SendToClient(client, ":" + this->_name + " 221 " + client.getNick() + " +i\r\n");
+					it->second.setModes(ch);
+					std::cout << "adding mode to invite only" << std::endl;
+					if (it->second.hasMode('i'))
+						std::cout << "proof of added mode" << std::endl;
+					SendToClient(client, ":" + this->_name + " (code for invite only) " + serverName + " +i\r\n");
 				}
 				else
-					client.removeMode(ch);
+					it->second.removeMode(ch);
+			}
+			else if (ch == 'k')
+			{
+				if (adding)
+				{
+					it->second.setModes(ch);
+					std::cout << "adding mode to set a key" << std::endl;
+					if (it->second.hasMode('k'))
+						std::cout << "proof of added mode" << std::endl;
+					SendToClient(client, ":" + this->_name + " (code for adding key) " + serverName + " +k\r\n");
+				}
+				else
+					it->second.removeMode(ch);
+			}
+			else if (ch == 'o')
+			{
+				if (adding)
+				{
+					it->second.setModes(ch);
+					std::cout << "adding mode for operator" << std::endl;
+					if (it->second.hasMode('o'))
+						std::cout << "proof of added mode" << std::endl;
+					SendToClient(client, ":" + this->_name + " (code for adding operator status) " + serverName + " +o\r\n");
+				}
+				else
+					it->second.removeMode(ch);
+			}
+			else if (ch == 't')
+			{
+				if (adding)
+				{
+					it->second.setModes(ch);
+					std::cout << "adding mode to TOPIC restriction" << std::endl;
+					if (it->second.hasMode('t'))
+						std::cout << "proof of added mode" << std::endl;
+					SendToClient(client, ":" + this->_name + " (code for adding restrictions on TOPIC) " + serverName + " +t\r\n");
+				}
+				else
+					it->second.removeMode(ch);
+			}
+			else if (ch == 'l')
+			{
+				if (adding)
+				{
+					it->second.setModes(ch);
+					std::cout << "adding mode for user limit in channel" << std::endl;
+					if (it->second.hasMode('l'))
+						std::cout << "proof of added mode" << std::endl;
+					SendToClient(client, ":" + this->_name + " (code for adding user limit for channel) " + serverName + " +l\r\n");
+				}
+				else
+					it->second.removeMode(ch);
 			}
 			else
 			{

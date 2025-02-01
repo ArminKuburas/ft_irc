@@ -230,8 +230,6 @@ void	Channel::removeMode(char mode)
 
 /** TO DO: 
  * 
- * 1. Manage to add operators after creation of the server (in mode +o the syntax is: /mode #channel +o <user>)
- * 2. Check for no operators left in the server and make the first of the list operator
- * 3. Add password functionality to server. Before and after server creation.
+ * Handle MODE changes. 
  * 
 */
