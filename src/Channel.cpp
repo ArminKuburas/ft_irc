@@ -23,25 +23,6 @@ Channel::~Channel()
 {
 }
 
-// Channel::Channel( const Channel& ref )
-// {
-// 	setName(ref._name);
-// 	setTopic(ref._topic);
-// 	setPrivate(ref._IsPrivate);
-// 	setInviteOnly(ref._isInviteOnly);
-// }
-
-// Channel &Channel::operator=( const Channel& ref )
-// {
-// 	if (*this == ref)
-// 		return (*this);
-// 	setName(ref._name);
-// 	setTopic(ref._topic);
-// 	setPrivate(ref._isPrivate);
-// 	setInviteOnly(ref._isInviteOnly);
-// 	return (*this);
-// }
-
 // Getters
 const std::string Channel::getName() const
 {
@@ -142,11 +123,9 @@ bool Channel::addOperator(Client* channelOperator, Client* target)
 {
 	if (!this->noOperators())
 	{
-		std::cout << "we got inside the no operator clause, which shouldn't happen" << std::endl;
 		if (!this->isOperator(channelOperator) || !this->isMember(channelOperator)
 			|| !this->isMember(target) || this->isOperator(target))
 		{
-			std::cout << "we got inside the clause " << std::endl;
 			return (false);
 		}
 	}
@@ -180,6 +159,7 @@ bool	Channel::changeKey( Client* channelOperator, std::string newKey )
 }
 
 // Utility
+
 bool	Channel::isMember(Client* client) const
 {
 	for (auto it = _members.begin(); it != _members.end(); ++it)
@@ -228,8 +208,12 @@ void	Channel::removeMode(char mode)
 	_channelModes.erase(mode);
 }
 
-/** TO DO: 
- * 
- * Handle MODE changes. 
- * 
-*/
+Client*	Channel::retrieveClient(std::string username)
+{
+	for (Client *member : _members)
+	{
+		if (member->getNick() == username)
+			return (member);
+	}
+	return (nullptr);
+}

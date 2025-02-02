@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/18 11:18:19 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/31 16:36:44 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/02 21:31:55 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,8 +29,8 @@ class Channel
 		std::set<Client*>		_operators;
 		std::string				_key;
 		std::set<char>			_channelModes;
-		bool 					_isPrivate; // private channels are set by MODE flag
-		bool					_isInviteOnly; // same as private
+		bool 					_isPrivate;
+		bool					_isInviteOnly;
 		void 					setName( const std::string& name );
 	public:
 		Channel(const std::string &name, const std::string &key, const std::string &topic, bool isPrivate, bool isInviteOnly);
@@ -67,4 +67,5 @@ class Channel
 		bool					noOperators() const;
 		bool					hasMode(char mode) const;
 		void					removeMode(char mode);
+		Client*					retrieveClient( std::string username );
 };

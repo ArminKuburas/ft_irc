@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/02 13:09:49 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/02 22:08:38 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -440,8 +440,8 @@ void Server::Ping(Client& client, const std::string& message)
 void Server::Mode(Client& client, const std::string& message)
 {
 	std::istringstream stream(message);
-	std::string command, target, modeChanges;
-	stream >> command >> target >> modeChanges;
+	std::string command, target, modeChanges, targetUser;
+	stream >> command >> target >> modeChanges >> targetUser;
 	bool channel = false;
 	bool user = false;
 	
@@ -519,20 +519,53 @@ void Server::Mode(Client& client, const std::string& message)
 		bool adding = true;
 		for (char ch : modeChanges)
 		{
+			std::string operatorPrivilege = " 324 ";
+			std::string noOperatorPrivilege = " 482 ";
 			if (ch == '+')
 				adding = true;
 			else if (ch == '-')
 				adding = false;
-			else if (ch == 'i')
-				ModeHelperChannel(client, it, ch, adding, " 253 ");
-			else if (ch == 'k')
-				ModeHelperChannel(client, it, ch, adding, " 254 ");
-			else if (ch == 'o')
-				ModeHelperChannel(client, it, ch, adding, " 255 ");
-			else if (ch == 't')
-				ModeHelperChannel(client, it, ch, adding, " 256 ");
-			else if (ch == 'l')
-				ModeHelperChannel(client, it, ch, adding, " 257 ");
+			else if (ch == 'i') // private channel
+			{
+				if (it->second.isOperator(&client) && it->second.isMember(&client))
+					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+				else
+					SendToClient(client, ":" + _name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+			}
+			else if (ch == 'k') // insert key to channel
+			{
+				if (it->second.isOperator(&client) && it->second.isMember(&client) && !it->second.getKey().empty()) // pre-existing key needs a different treament for error
+					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+				else
+					SendToClient(client, ":" + _name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+			}
+			else if (ch == 'o') // give operator status
+			{
+				if (it->second.isOperator(&client) && it->second.isMember(&client) && !targetUser.empty())
+				{
+					Client* newOperator = it->second.retrieveClient(targetUser);
+					if (newOperator != nullptr)
+						it->second.addOperator(&client, newOperator);
+					else
+						SendToClient(client, ":" + _name + " 401 " + client.getNick() + " " + target + ":no such nick or channel\r\n");
+				}
+				else
+					SendToClient(client, ":" + _name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+			}
+			else if (ch == 't') // change or view the channel topic
+			{
+				if (it->second.isOperator(&client) && it->second.isMember(&client))
+					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+				else
+					SendToClient(client, ":" + _name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+			}
+			else if (ch == 'l') // set/remove user limit to channel
+			{
+				if (it->second.isOperator(&client) && it->second.isMember(&client))
+					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+				else
+					SendToClient(client, ":" + _name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+			}
 			else
 			{ 
 				// ERR_UMODEUNKNOWNFLAG
@@ -553,16 +586,11 @@ void Server::ModeHelperChannel(Client& client, std::map<std::string, Channel>::i
 	if (adding)
 	{
 		it->second.setModes(mode);
-		std::cout << "adding mode " << mode << std::endl;
-		if (it->second.hasMode(mode))
-			std::cout << "proof of added mode " << mode << std::endl;
 		SendToClient(client, ":" + this->_name + code + it->first + " +" + mode + "\r\n");
 	}
 	else
 	{
 		it->second.removeMode(mode);
-		if (!it->second.hasMode(mode))
-			std::cout << "proof of removed mode " << mode << std::endl;
 		SendToClient(client, ":" + this->_name + code + it->first + " -" + mode + "\r\n");
 	}
 }
@@ -600,6 +628,7 @@ void Server::Priv(Client& client, const std::string& message)
 		{
 			std::string ERR_NOMEMBER = "Zorg: you are not a member of the channel " + target + "\r\n";
 			SendToClient(client, ERR_NOMEMBER);
+			SendToClient(client, ":" + _name + " 442 " + client.getNick() + " " + target + ": you're not in the channel\r\n");
 		}
 	}
 	else
@@ -643,7 +672,7 @@ void Server::Join(Client& client, const std::string& message)
 	if (channel.empty() || channel[0] != '#')
 	{
 		// ERR_BADCHANMASK
-		SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + ": invalid channel name" + "\r\n");
+		SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + ":invalid channel name" + "\r\n");
 		return ;
 	}
 
@@ -654,13 +683,13 @@ void Server::Join(Client& client, const std::string& message)
 		_channels.emplace(channel, newChannel);
 		it = _channels.find(channel);
 	}
-	if (it->second.getKey() == key)
-		it->second.addMember(&client);
-	else
-	{
-		SendToClient(client, ":" + _name + " 475 " + client.getNick() + " " + channel + ": invalid key" + "\r\n");
-		return ;
-	}
+    if (!it->second.getKey().empty() && it->second.getKey() != key)
+    {
+        SendToClient(client, ":" + _name + " 475 " + client.getNick() + " " + channel + " :Bad channel key\r\n");
+        return ;
+    }
+
+	it->second.addMember(&client);	
 	if (it->second.isMember(&client))
 	{
 		SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
@@ -750,12 +779,6 @@ void Server::Part(Client& client, const std::string& message)
 		{
 			for (Client* member : it->second.getMembers())
 			{
-				// first possible members is the new operator
-				// if (it->second.getMembers().empty())
-				// {
-				// 	_channels.erase(channel);
-				// 	return ;
-				// }
 				if (member->getClientFd() != client.getClientFd())
 				{
 					it->second.addOperator(nullptr, member);
