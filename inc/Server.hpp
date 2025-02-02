@@ -63,7 +63,6 @@ class Server
 		void						setSocket( int socket );
 		void						setServerAddr();
 
-
 		// public methods
 		void						portConversion( std::string port );
 		void						Run();
@@ -73,7 +72,7 @@ class Server
 		void						SendToChannel(const std::string& channelName, const std::string& message, Client* sender, bool justJoined);
 		void						handleMessage(Client& client, const std::string& message);
 		int							connectionHandshake(Client& client, std::vector<std::string> messages);
-
+		void						ModeHelperChannel(Client &client, std::map<std::string, Channel>::iterator it, char mode, bool adding, std::string code);
 
 		// Command handlers
 		void						Ping(Client& client, const std::string& message);
@@ -93,5 +92,6 @@ class Server
 
 		void 						initializeCommandHandlers();
 		std::vector<std::string>	splitMessages(const std::string& message);
+
 
 };

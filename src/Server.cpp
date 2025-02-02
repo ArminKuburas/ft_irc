@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/01 22:20:19 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/02 13:09:49 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -519,78 +519,22 @@ void Server::Mode(Client& client, const std::string& message)
 		bool adding = true;
 		for (char ch : modeChanges)
 		{
-			const std::string serverName = it->second.getName();
 			if (ch == '+')
 				adding = true;
 			else if (ch == '-')
 				adding = false;
 			else if (ch == 'i')
-			{
-				if (adding)
-				{
-					it->second.setModes(ch);
-					std::cout << "adding mode to invite only" << std::endl;
-					if (it->second.hasMode('i'))
-						std::cout << "proof of added mode" << std::endl;
-					SendToClient(client, ":" + this->_name + " (code for invite only) " + serverName + " +i\r\n");
-				}
-				else
-					it->second.removeMode(ch);
-			}
+				ModeHelperChannel(client, it, ch, adding, " 253 ");
 			else if (ch == 'k')
-			{
-				if (adding)
-				{
-					it->second.setModes(ch);
-					std::cout << "adding mode to set a key" << std::endl;
-					if (it->second.hasMode('k'))
-						std::cout << "proof of added mode" << std::endl;
-					SendToClient(client, ":" + this->_name + " (code for adding key) " + serverName + " +k\r\n");
-				}
-				else
-					it->second.removeMode(ch);
-			}
+				ModeHelperChannel(client, it, ch, adding, " 254 ");
 			else if (ch == 'o')
-			{
-				if (adding)
-				{
-					it->second.setModes(ch);
-					std::cout << "adding mode for operator" << std::endl;
-					if (it->second.hasMode('o'))
-						std::cout << "proof of added mode" << std::endl;
-					SendToClient(client, ":" + this->_name + " (code for adding operator status) " + serverName + " +o\r\n");
-				}
-				else
-					it->second.removeMode(ch);
-			}
+				ModeHelperChannel(client, it, ch, adding, " 255 ");
 			else if (ch == 't')
-			{
-				if (adding)
-				{
-					it->second.setModes(ch);
-					std::cout << "adding mode to TOPIC restriction" << std::endl;
-					if (it->second.hasMode('t'))
-						std::cout << "proof of added mode" << std::endl;
-					SendToClient(client, ":" + this->_name + " (code for adding restrictions on TOPIC) " + serverName + " +t\r\n");
-				}
-				else
-					it->second.removeMode(ch);
-			}
+				ModeHelperChannel(client, it, ch, adding, " 256 ");
 			else if (ch == 'l')
-			{
-				if (adding)
-				{
-					it->second.setModes(ch);
-					std::cout << "adding mode for user limit in channel" << std::endl;
-					if (it->second.hasMode('l'))
-						std::cout << "proof of added mode" << std::endl;
-					SendToClient(client, ":" + this->_name + " (code for adding user limit for channel) " + serverName + " +l\r\n");
-				}
-				else
-					it->second.removeMode(ch);
-			}
+				ModeHelperChannel(client, it, ch, adding, " 257 ");
 			else
-			{
+			{ 
 				// ERR_UMODEUNKNOWNFLAG
 				SendToClient(client, ":" + _name + " 501 " + ":Unknown mode flag\r\n");
 			}
@@ -602,6 +546,25 @@ void Server::Mode(Client& client, const std::string& message)
 		return ;
 	}
 		
+}
+
+void Server::ModeHelperChannel(Client& client, std::map<std::string, Channel>::iterator it, char mode, bool adding, std::string code)
+{
+	if (adding)
+	{
+		it->second.setModes(mode);
+		std::cout << "adding mode " << mode << std::endl;
+		if (it->second.hasMode(mode))
+			std::cout << "proof of added mode " << mode << std::endl;
+		SendToClient(client, ":" + this->_name + code + it->first + " +" + mode + "\r\n");
+	}
+	else
+	{
+		it->second.removeMode(mode);
+		if (!it->second.hasMode(mode))
+			std::cout << "proof of removed mode " << mode << std::endl;
+		SendToClient(client, ":" + this->_name + code + it->first + " -" + mode + "\r\n");
+	}
 }
 
 void Server::Priv(Client& client, const std::string& message)
