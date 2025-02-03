@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/03 15:42:29 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/03 16:16:50 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -556,16 +556,30 @@ void Server::Mode(Client& client, const std::string& message)
 			}
 			else if (ch == 'o') // give operator status
 			{
-				if (it->second.isOperator(&client) && it->second.isMember(&client) && !targetUser.empty())
+				if (adding)
 				{
-					Client* newOperator = it->second.retrieveClient(targetUser);
-					if (newOperator != nullptr)
-						it->second.addOperator(&client, newOperator);
+					if (it->second.isOperator(&client) && it->second.isMember(&client) && !targetUser.empty())
+					{
+						Client* newOperator = it->second.retrieveClient(targetUser);
+						if (newOperator != nullptr)
+							it->second.addOperator(&client, newOperator);
+						else
+							SendToClient(client, ":" + this->_name + " 401 " + client.getNick() + " " + target + ":no such nick or channel\r\n");
+					}
 					else
-						SendToClient(client, ":" + this->_name + " 401 " + client.getNick() + " " + target + ":no such nick or channel\r\n");
+						SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
 				}
 				else
-					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+				{
+					if (it->second.isOperator(&client) && it->second.isMember(&client) && !targetUser.empty())
+					{
+						Client* possibleOperator = it->second.retrieveClient(targetUser);
+						if (possibleOperator != nullptr)
+							it->second.removeOperator(&client, possibleOperator, false);
+						else
+							SendToClient(client, ":" + this->_name + " 401 " + client.getNick() + " " + target + ":no such nick or channel\r\n");
+					}
+				}
 			}
 			else if (ch == 't') // change or view the channel topic
 			{
@@ -581,7 +595,7 @@ void Server::Mode(Client& client, const std::string& message)
 					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
 					if (adding)
 					{
-						if (!targetUser.empty())
+						if (targetUser.empty())
 							SendToClient(client, ":" + this->_name + " 461 " + client.getNick() + " " + ":not enough parameters\r\n");
 						if (it->second.getMaxMembers() == true)
 						{
