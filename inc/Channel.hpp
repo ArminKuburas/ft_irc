@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Channel.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/18 11:18:19 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/30 15:25:48 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/03 13:00:35 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <cstdint>
 #include "Client.hpp"
 
 class Client;
@@ -43,12 +44,18 @@ class Channel
 		const std::set<Client*> getOperators() const;
 		const bool&				getIsPrivate() const;
 		const bool&				getIsInviteOnly() const;
+		std::string				getModes() const;
+		bool					getTopicFlag() const;
+		uint64_t				getMaxMembers() const;
 
 		// Setters
-		void					setTopic(const std::string& newTopic);
+		void					setTopic(const std::string& newTopic, Client* client);
 		void					setKey(const std::string& key);
 		void					setPrivate(bool isPrivate);
 		void					setInviteOnly(bool isInviteOnly);
+		void					setModes(char mode);
+		void 					setTopicFlag( bool operatorSetsTopic );
+		void 					setMaxMembers( uint64_t limit );
 
 		// Membership management
 		void					addMember(Client* client);
@@ -62,5 +69,7 @@ class Channel
 		bool 					isOperator(Client* client) const;
 		bool					isChannelEmpty() const;
 		bool					noOperators() const;
-
+		bool					hasMode(char mode) const;
+		void					removeMode(char mode);
+		Client*					retrieveClient( std::string username );
 };

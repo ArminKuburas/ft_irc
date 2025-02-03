@@ -12,35 +12,19 @@
 
 Channel::Channel(const std::string &name, const std::string &key, const std::string &topic, bool IsPrivate, bool isInviteOnly )
 {
+	uint64_t largeNumber = UINT64_C(18446744073709551615); // UINT64_C ensures portability for other architectures
+	setMaxMembers(largeNumber);
 	setName(name);
 	setKey(key);
 	setTopic(topic);
 	setPrivate(IsPrivate);
 	setInviteOnly(isInviteOnly);
+	_topic = topic;
 }
 
 Channel::~Channel()
 {
 }
-
-// Channel::Channel( const Channel& ref )
-// {
-// 	setName(ref._name);
-// 	setTopic(ref._topic);
-// 	setPrivate(ref._IsPrivate);
-// 	setInviteOnly(ref._isInviteOnly);
-// }
-
-// Channel &Channel::operator=( const Channel& ref )
-// {
-// 	if (*this == ref)
-// 		return (*this);
-// 	setName(ref._name);
-// 	setTopic(ref._topic);
-// 	setPrivate(ref._isPrivate);
-// 	setInviteOnly(ref._isInviteOnly);
-// 	return (*this);
-// }
 
 // Getters
 const std::string Channel::getName() const
@@ -78,6 +62,26 @@ const bool& Channel::getIsInviteOnly() const
 	return (_isInviteOnly);
 }
 
+std::string Channel::getModes() const
+{
+	std::string modes;
+	for (char mode : this->_channelModes)
+	{
+		modes += mode;
+	}
+	return (modes);
+}
+
+bool Channel::getTopicFlag() const
+{
+	return (_operatorSetsTopic);
+}
+
+uint64_t	Channel::getMaxMembers() const
+{
+	return (_maxMembers);
+}
+
 // Setters
 void Channel::setName( const std::string& name )
 {
@@ -89,9 +93,15 @@ void Channel::setKey( const std::string& key )
 	_key = key;
 }
 
-void Channel::setTopic( const std::string& newTopic )
+void Channel::setTopic( const std::string& newTopic, Client* client )
 {
-	_topic = newTopic;
+	if (getTopicFlag() == false)
+		_topic = newTopic;
+	else
+	{
+		if (isMember(client) && isOperator(client))
+			_topic = newTopic;
+	}
 }
 
 void Channel::setPrivate( bool isPrivate )
@@ -102,6 +112,25 @@ void Channel::setPrivate( bool isPrivate )
 void Channel::setInviteOnly( bool isInviteOnly )
 {
 	_isInviteOnly = isInviteOnly;
+}
+
+void Channel::setTopicFlag( bool operatorSetsTopic )
+{
+	_operatorSetsTopic = operatorSetsTopic;
+}
+
+void Channel::setMaxMembers( uint64_t limit )
+{
+	_maxMembers = limit;
+}
+
+void Channel::setModes(char mode)
+{
+	this->_channelModes.insert(mode);
+	if (mode == 'i')
+			this->setInviteOnly(true);
+	else if (mode == 't')
+			this->setTopicFlag(true);
 }
 
 // Membership management
@@ -127,11 +156,9 @@ bool Channel::addOperator(Client* channelOperator, Client* target)
 {
 	if (!this->noOperators())
 	{
-		std::cout << "we got inside the no operator clause, which shouldn't happen" << std::endl;
 		if (!this->isOperator(channelOperator) || !this->isMember(channelOperator)
 			|| !this->isMember(target) || this->isOperator(target))
 		{
-			std::cout << "we got inside the clause " << std::endl;
 			return (false);
 		}
 	}
@@ -203,11 +230,26 @@ bool	Channel::noOperators() const
 	return (false);
 }
 
+bool	Channel::hasMode(char mode) const
+{
+	return (this->_channelModes.find(mode) != this->_channelModes.end());
+}
 
-/** TO DO: 
- * 
- * 1. Manage to add operators after creation of the server (in mode +o the syntax is: /mode #channel +o <user>)
- * 2. Check for no operators left in the server and make the first of the list operator
- * 3. Add password functionality to server. Before and after server creation.
- * 
-*/
+void	Channel::removeMode(char mode)
+{
+	_channelModes.erase(mode);
+	if (mode == 'i')
+			this->setInviteOnly(false);
+	else if (mode == 't')
+			this->setTopicFlag(false);
+}
+
+Client*	Channel::retrieveClient(std::string username)
+{
+	for (Client *member : _members)
+	{
+		if (member->getNick() == username)
+			return (member);
+	}
+	return (nullptr);
+}
