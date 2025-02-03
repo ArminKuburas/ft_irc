@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/02 22:08:38 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/03 12:04:22 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,8 +41,8 @@ void Server::initializeCommandHandlers()
 	_commands["PART"] = [this](Client& client, const std::string& message)		{Part(client, message); };
 	_commands["QUIT"] = [this](Client& client, const std::string& message) 		{Quit(client, message); };
 	_commands["PASS"] = [this](Client& client, const std::string& message) 		{Pass(client, message); };
-	_commands["STATS"] = [this](Client& client, const std::string& message) 		{Stats(client, message); };
-	_commands["WHOIS"] = [this](Client& client, const std::string& message) { Whois(client, message); };
+	_commands["STATS"] = [this](Client& client, const std::string& message) 	{Stats(client, message); };
+	_commands["WHOIS"] = [this](Client& client, const std::string& message) 	{Whois(client, message); };
 }
 
 Server::~Server()
@@ -422,15 +422,14 @@ void Server::Ping(Client& client, const std::string& message)
 {
 	size_t pos = message.find(" ");
 	if (pos == std::string::npos || pos + 1 >= message.size())
-	
 	{
-	    SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\r\n");
+		SendToClient(client, ":" + this->_name + " 409 " + "ERR_NOORIGIN :No origin specified\r\n");
 		return;
 	}
 	std::string server1 = message.substr(pos + 1);
 	if (server1.empty())
 	{
-		SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\r\n");
+		SendToClient(client, ":" + this->_name + " 409 " + "ERR_NOORIGIN :No origin specified\r\n");
 		return;
 	}
 	//PONG response.
@@ -530,14 +529,26 @@ void Server::Mode(Client& client, const std::string& message)
 				if (it->second.isOperator(&client) && it->second.isMember(&client))
 					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
 				else
-					SendToClient(client, ":" + _name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
 			}
 			else if (ch == 'k') // insert key to channel
 			{
-				if (it->second.isOperator(&client) && it->second.isMember(&client) && !it->second.getKey().empty()) // pre-existing key needs a different treament for error
-					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+				if (it->second.isOperator(&client) && it->second.isMember(&client)) // pre-existing key needs a different treament for error
+				{
+					if (!it->second.getKey().empty())
+					{
+						SendToClient(client, ":" + this->_name + " 467 " + client.getNick() + " " + target + ":key already set\r\n");
+						return ;
+					}
+					if (targetUser.empty())
+					{
+						SendToClient(client, ":" + this->_name + " 461 " + client.getNick() + " " + target + ":key already set\r\n");
+						return ;
+					}
+					it->second.setKey(targetUser);
+				}
 				else
-					SendToClient(client, ":" + _name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
 			}
 			else if (ch == 'o') // give operator status
 			{
@@ -547,35 +558,35 @@ void Server::Mode(Client& client, const std::string& message)
 					if (newOperator != nullptr)
 						it->second.addOperator(&client, newOperator);
 					else
-						SendToClient(client, ":" + _name + " 401 " + client.getNick() + " " + target + ":no such nick or channel\r\n");
+						SendToClient(client, ":" + this->_name + " 401 " + client.getNick() + " " + target + ":no such nick or channel\r\n");
 				}
 				else
-					SendToClient(client, ":" + _name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
 			}
 			else if (ch == 't') // change or view the channel topic
 			{
 				if (it->second.isOperator(&client) && it->second.isMember(&client))
 					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
 				else
-					SendToClient(client, ":" + _name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
 			}
 			else if (ch == 'l') // set/remove user limit to channel
 			{
 				if (it->second.isOperator(&client) && it->second.isMember(&client))
 					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
 				else
-					SendToClient(client, ":" + _name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
 			}
 			else
 			{ 
 				// ERR_UMODEUNKNOWNFLAG
-				SendToClient(client, ":" + _name + " 501 " + ":Unknown mode flag\r\n");
+				SendToClient(client, ":" + this->_name + " 501 " + ":Unknown mode flag\r\n");
 			}
 		}
 	}
 	else
 	{
-		SendToClient(client, ":" + _name + " 221 " + "RPL_UMODEIS " + client.getModes() + "\r\n");
+		SendToClient(client, ":" + this->_name + " 221 " + "RPL_UMODEIS " + client.getModes() + "\r\n");
 		return ;
 	}
 		
@@ -585,7 +596,16 @@ void Server::ModeHelperChannel(Client& client, std::map<std::string, Channel>::i
 {
 	if (adding)
 	{
-		it->second.setModes(mode);
+		it->second.setModes(mode); // +o, +k, +l need to be handled on server side. Class cannot handle.
+		if (mode == 'k')
+		{
+
+			
+		}
+		else if (mode == 'l')
+		{
+			
+		}
 		SendToClient(client, ":" + this->_name + code + it->first + " +" + mode + "\r\n");
 	}
 	else
