@@ -16,7 +16,7 @@ Channel::Channel(const std::string &name, const std::string &key, const std::str
 	setMaxMembers(largeNumber);
 	setName(name);
 	setKey(key);
-	setTopic(topic);
+	setTopic(topic, "none");
 	setPrivate(IsPrivate);
 	setInviteOnly(isInviteOnly);
 	_topic = topic;
@@ -93,15 +93,20 @@ void Channel::setKey( const std::string& key )
 	_key = key;
 }
 
-void Channel::setTopic( const std::string& newTopic, Client* client )
+void Channel::setTopic( const std::string& newTopic, const std::string& setter)
 {
-	if (getTopicFlag() == false)
-		_topic = newTopic;
-	else
-	{
-		if (isMember(client) && isOperator(client))
-			_topic = newTopic;
-	}
+	_topic = newTopic;
+	_topicSetBy = setter;
+}
+
+std::string	Channel::getSetter() const
+{
+	return (_topicSetBy);
+}
+
+time_t Channel::getTopicTime() const
+{
+	return (_topicSetAt);
 }
 
 void Channel::setPrivate( bool isPrivate )

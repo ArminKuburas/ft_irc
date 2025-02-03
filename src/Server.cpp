@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/03 13:01:43 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/03 15:11:49 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -717,9 +717,18 @@ void Server::Join(Client& client, const std::string& message)
 		std::string namesList;
 		for (Client* member : it->second.getMembers())
 			namesList += member->getNick() + " ";
-		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "Members :" + namesList + "\r\n", &client, true);
-		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "Topic :" + it->second.getTopic() + "\r\n", &client, true);
-		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "has joined the channel\r\n", &client, false);
+		SendToClient(client, ":" + _name + " 353 " + client.getNick() + " = " + channel + " :" + namesList + "\r\n");
+		SendToClient(client, ":" + _name + " 366 " + client.getNick() + " " + channel + " :End of /NAMES list.\r\n");
+		if (!it->second.getTopic().empty())
+		{
+			SendToClient(client, ":" + _name + " 332 " + client.getNick() + " " + channel + " :" + it->second.getTopic() + "\r\n");
+			
+			SendToClient(client, ":" + _name + " 333 " + client.getNick() + " " + channel + " " + it->second.getSetter() + " " + std::to_string(it->second.getTopicTime()) + "\r\n");
+		}
+		else
+		{
+			SendToClient(client, ":" + _name + " 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
+		}
 	}
 }
 
@@ -859,7 +868,7 @@ void	Server::Topic(Client& client, const std::string& message)
 		return ;
 	}
 	std::string new_topic = message.substr(message.find(':') + 1);
-	channel.setTopic(new_topic);
+	channel.setTopic(new_topic, client.getNick());
 	for (Client* member : channel.getMembers())
 	{
 		SendToClient(*member, ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " TOPIC " + channel_name + " :" + new_topic + "\r\n");

@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/18 11:18:19 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/03 13:00:35 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/03 15:03:49 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,11 +26,16 @@ class Channel
 	private:
 		std::string				_name;
 		std::string				_topic;
+		std::string				_topicSetBy;
+		time_t					_topicSetAt;
 		std::set<Client*>		_members;
 		std::set<Client*>		_operators;
 		std::string				_key;
-		bool 					_isPrivate; // private channels are set by MODE flag
-		bool					_isInviteOnly; // same as private
+		std::set<char>			_channelModes;
+		bool 					_isPrivate;
+		uint64_t				_maxMembers;
+		bool					_isInviteOnly;
+		bool					_operatorSetsTopic;
 		void 					setName( const std::string& name );
 	public:
 		Channel(const std::string &name, const std::string &key, const std::string &topic, bool isPrivate, bool isInviteOnly);
@@ -47,9 +52,11 @@ class Channel
 		std::string				getModes() const;
 		bool					getTopicFlag() const;
 		uint64_t				getMaxMembers() const;
+		std::string				getSetter() const;
+		time_t					getTopicTime() const;
 
 		// Setters
-		void					setTopic(const std::string& newTopic, Client* client);
+		void					setTopic(const std::string& newTopic, const std::string& setter);
 		void					setKey(const std::string& key);
 		void					setPrivate(bool isPrivate);
 		void					setInviteOnly(bool isInviteOnly);
