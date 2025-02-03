@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/18 11:18:19 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/03 12:05:45 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/03 15:30:49 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,7 @@ class Channel
 		std::set<char>			_channelModes;
 		bool 					_isPrivate;
 		uint64_t				_maxMembers;
+		bool					_hasMemberLimit;
 		bool					_isInviteOnly;
 		bool					_operatorSetsTopic;
 		void 					setName( const std::string& name );
@@ -49,16 +50,18 @@ class Channel
 		const bool&				getIsInviteOnly() const;
 		std::string				getModes() const;
 		bool					getTopicFlag() const;
-		uint64_t				getMaxMembers() const;
+		uint64_t				getNumberMaxMembers() const;
+		bool					getMaxMembers() const;
+		uint64_t				getNbMembers() const;
 
 		// Setters
-		void					setTopic(const std::string& newTopic, Client* client);
+		void					setTopic(const std::string& newTopic);
 		void					setKey(const std::string& key);
 		void					setPrivate(bool isPrivate);
 		void					setInviteOnly(bool isInviteOnly);
 		void					setModes(char mode);
 		void 					setTopicFlag( bool operatorSetsTopic );
-		void 					setMaxMembers( uint64_t limit );
+		void 					setMaxMembers( bool active );
 
 		// Membership management
 		void					addMember(Client* client);
@@ -66,6 +69,7 @@ class Channel
 		bool					addOperator(Client* channelOperator, Client* target);
 		bool					removeOperator(Client* channelOperator, Client* target, bool leaving);
 		bool					changeKey(Client* channelOperator, std::string newKey);
+		void 					limitMaxMembers( uint64_t limit );
 		
 		// Utility
 		bool 					isMember(Client* client) const;

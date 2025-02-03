@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <stdexcept>
 #include <cstring>
 #include <fcntl.h>
 #include <poll.h>
