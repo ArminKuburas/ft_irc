@@ -16,7 +16,8 @@ Channel::Channel(const std::string &name, const std::string &key, const std::str
 	setMaxMembers(largeNumber);
 	setName(name);
 	setKey(key);
-	setTopic(topic, "none");
+	if (!(topic == ""))
+		setTopic(topic, "none");
 	setPrivate(IsPrivate);
 	setInviteOnly(isInviteOnly);
 	_topic = topic;
@@ -97,6 +98,7 @@ void Channel::setTopic( const std::string& newTopic, const std::string& setter)
 {
 	_topic = newTopic;
 	_topicSetBy = setter;
+	_topicSetAt = time(NULL);
 }
 
 std::string	Channel::getSetter() const

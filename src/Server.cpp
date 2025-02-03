@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/03 15:11:49 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/03 16:22:23 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -700,7 +700,7 @@ void Server::Join(Client& client, const std::string& message)
 	auto it = _channels.find(channel);
 	if (it == _channels.end()) 
 	{
-		Channel newChannel(channel, key, "na", false, false);
+		Channel newChannel(channel, key, "", false, false);
 		_channels.emplace(channel, newChannel);
 		it = _channels.find(channel);
 	}
