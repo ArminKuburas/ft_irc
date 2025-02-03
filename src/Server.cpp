@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 21:00:18 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/03 09:29:28 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,8 +41,9 @@ void Server::initializeCommandHandlers()
 	_commands["PART"] = [this](Client& client, const std::string& message)		{Part(client, message); };
 	_commands["QUIT"] = [this](Client& client, const std::string& message) 		{Quit(client, message); };
 	_commands["PASS"] = [this](Client& client, const std::string& message) 		{Pass(client, message); };
-	_commands["STATS"] = [this](Client& client, const std::string& message) 		{Stats(client, message); };
-	_commands["WHOIS"] = [this](Client& client, const std::string& message) { Whois(client, message); };
+	_commands["STATS"] = [this](Client& client, const std::string& message) 	{Stats(client, message); };
+	_commands["WHOIS"] = [this](Client& client, const std::string& message) 	{ Whois(client, message); };
+	_commands["TOPIC"] = [this](Client& client, const std::string& message) 	{ Topic(client, message); };
 }
 
 Server::~Server()
@@ -657,4 +658,50 @@ void Server::Part(Client& client, const std::string& message)
 	SendToClient(client, ":" + client.getNick() + " PART " + channel + "\r\n");
 	if (it->second.isChannelEmpty())
 		_channels.erase(channel);
+}
+
+void	Server::Topic(Client& client, const std::string& message)
+{
+	std::vector<std::string> tokens;
+	std::istringstream stream(message);
+	std::string token;
+	while (stream >> token)
+		tokens.push_back(token);
+	if (tokens.size() < 2)
+	{
+		SendToClient(client, ":" + _name + " 461 " + client.getNick() + " TOPIC :Not enough parameters\r\n");
+		return ;
+	}
+	std::string channel_name = tokens[1];
+	auto channelIt = _channels.find(channel_name);
+	if (channelIt == _channels.end())
+	{
+		SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channel_name + " :No such channel\r\n");
+		return ;
+	}
+	Channel& channel = channelIt->second;
+	if (!channel.isMember(&client))
+	{
+		SendToClient(client, ":" + _name + " 442 " + client.getNick() + " " + channel_name + " :You're not on that channel\r\n");
+		return ;
+	}
+	if (tokens.size() == 2)
+	{
+		if (channel.getTopic().empty())
+			SendToClient(client, ":" + _name + " 331 " + client.getNick() + " " + channel_name + " :No topic is set\r\n");
+		else
+			SendToClient(client, ":" + _name + " 332 " + client.getNick() + " " + channel_name + " :" + channel.getTopic() + "\r\n");
+		return ;
+	}
+	if (!channel.isOperator(&client))
+	{
+		SendToClient(client, ":" + _name + " 482 " + client.getNick() + " " + channel_name + " :You're not a channel operator\r\n");
+		return ;
+	}
+	std::string new_topic = message.substr(message.find(':') + 1);
+	channel.setTopic(new_topic);
+	for (Client* member : channel.getMembers())
+	{
+		SendToClient(*member, ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " TOPIC " + channel_name + " :" + new_topic + "\r\n");
+	}
 }

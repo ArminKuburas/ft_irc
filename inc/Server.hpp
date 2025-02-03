@@ -89,6 +89,7 @@ class Server
 		void Stats(Client& client, const std::string& message);
 		void Whois(Client& client, const std::string& message);
     	void Part(Client& client, const std::string& message);
+		void Topic(Client& client, const std::string& message);
 
 
 		void 						initializeCommandHandlers();
