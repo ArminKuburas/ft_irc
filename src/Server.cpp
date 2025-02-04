@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/04 14:00:23 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/04 14:26:52 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -700,7 +700,7 @@ void Server::Priv(Client& client, const std::string& message)
 			SendToClient(*it, formattedMessage);
 		}
 		else
-			SendToClient(client, ":" + _name + " 401 " + target + " :No such nick/channel\r\n");
+			SendToClient(client, ":" + _name + " 401 " + client.getNick() + " " + target + " :No such nick/channel\r\n");
 	}
 }
 
