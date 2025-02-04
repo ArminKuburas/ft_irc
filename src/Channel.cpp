@@ -105,15 +105,21 @@ void Channel::setKey( const std::string& key )
 	_key = key;
 }
 
-void Channel::setTopic( const std::string& newTopic, Client* client )
+void Channel::setTopic( const std::string& newTopic, const std::string& setter)
 {
-	if (getTopicFlag() == false)
-		_topic = newTopic;
-	else
-	{
-		if (isMember(client) && isOperator(client))
-			_topic = newTopic;
-	}
+	_topic = newTopic;
+	_topicSetBy = setter;
+	_topicSetAt = time(NULL);
+}
+
+std::string	Channel::getSetter() const
+{
+	return (_topicSetBy);
+}
+
+time_t Channel::getTopicTime() const
+{
+	return (_topicSetAt);
 }
 
 void Channel::setPrivate( bool isPrivate )
