@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/04 14:26:52 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/04 17:41:04 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,7 @@ void Server::initializeCommandHandlers()
 	_commands["STATS"] = [this](Client& client, const std::string& message) 	{Stats(client, message); };
 	_commands["WHOIS"] = [this](Client& client, const std::string& message) 	{ Whois(client, message); };
 	_commands["TOPIC"] = [this](Client& client, const std::string& message) 	{ Topic(client, message); };
+	_commands["INVITE"] = [this](Client& client, const std::string& message) 	{ Invite(client, message); };
 }
 
 Server::~Server()
@@ -924,4 +925,49 @@ void	Server::Topic(Client& client, const std::string& message)
 	{
 		SendToClient(*member, ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " TOPIC " + channel_name + " :" + new_topic + "\r\n");
 	}
+}
+
+void Server::Invite(Client& client, const std::string& message)
+{
+	std::istringstream stream(message);
+	std::string command, nickname, channelName;
+	stream >> command >> nickname >> channelName;
+
+	if (nickname.empty() || channelName.empty())
+	{
+		SendToClient(client, ":" + _name + " 461 " + client.getNick() + " INVITE :Not enough parameters\r\n");
+		return;
+	}
+	if (ChannelName[0] != '#')
+	{
+		SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channelName + " :No such channel\r\n");
+		return;
+	}
+	auto TargetIt = std::find_if(_clients.begin(), _clients.end(), [&nickname](Client& c) {return c.getNick() == nickname; });
+	if (TargetIt == _clients.end())
+	{
+		SendToClient(client, ":" + _name + " 401 " + client.getNick() + " " + nickname + " :No such nick/channel\r\n");
+		return;
+	}
+	auto ChannelIt = _channels.find(channelName);
+	if (ChannelIt != _channels.end())
+	{
+		Channel& channel = ChannelIt->second;
+		if (!channel.isMember(&client))
+		{
+			SendToClient(client, ":" + _name + " 442 " + client.getNick() + " " + channelName + " :You're not on that channel\r\n");
+			return;
+		}
+		if (channel.isMember(&(*TargetIt)))
+		{
+			SendToClient(client, ":" + _name + " 443 " + client.getNick() + " " + nickname + " " + channelName + " :is already on channel\r\n");
+			return;
+		}
+		if (channel.getIsInviteOnly() && !channel.isOperator(&client))
+		{
+			SendToClient(client, ":" + _name + " 482 " + client.getNick() + " " + channelName + " :You're not a channel operator\r\n");
+		}
+	}
+	SendToClient(*TargetIt, ":" + client.getNick() + " INVITE " + nickname + " " + channelName + "\r\n");
+	SendToClient(client, ":" + _name + " 341 " + client.getNick() + " " + nickname + " " + channelName + "\r\n");
 }
