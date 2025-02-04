@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/04 14:26:52 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/04 16:00:29 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,6 +35,7 @@ void Server::initializeCommandHandlers()
 	_commands["NICK"] = [this](Client& client, const std::string& message) 		{Nick(client, message); };
 	_commands["USER"] = [this](Client& client, const std::string& message) 		{User(client, message); };
 	_commands["PING"] = [this](Client& client, const std::string& message) 		{Ping(client, message); };
+	_commands["PONG"] = [this](Client& client, const std::string& message) 		{Pong(client, message); };
 	_commands["MODE"] = [this](Client& client, const std::string& message) 		{Mode(client, message); };
 	_commands["PRIVMSG"] = [this](Client& client, const std::string& message) 	{Priv(client, message); };
 	_commands["JOIN"] = [this](Client& client, const std::string& message)		{Join(client, message); };
@@ -421,20 +422,30 @@ void Server::Whois(Client& client, const std::string& message)
 
 void Server::Ping(Client& client, const std::string& message)
 {
-	size_t pos = message.find(" ");
-	if (pos == std::string::npos || pos + 1 >= message.size())
+	std::istringstream stream(message);
+	std::string command, target;
+	stream >> command >> target;
+
+	if (target.empty())
 	{
-		SendToClient(client, ":" + this->_name + " 409 " + "ERR_NOORIGIN :No origin specified\r\n");
+		SendToClient(client, ":" + _name + " 409 " + client.getNick() + " :No origin specified\r\n");
 		return;
 	}
-	std::string server1 = message.substr(pos + 1);
-	if (server1.empty())
+	SendToClient(client, ":" + _name + " PONG " + _name + " :" + target + "\r\n");
+}
+
+void Server::Pong(Client& client, const std::string& message)
+{
+	std::istringstream stream(message);
+	std::string command, target;
+	stream >> command >> target;
+
+	if (target.empty())
 	{
-		SendToClient(client, ":" + this->_name + " 409 " + "ERR_NOORIGIN :No origin specified\r\n");
+		SendToClient(client, ":" + _name + " 409 " + client.getNick() + " :No origin specified\r\n");
 		return;
 	}
-	//PONG response.
-	SendToClient(client, "PONG " + server1 + "\r\n");
+	// The client has confirmed they're alive, so we don't need to do anything else
 }
 
 void Server::Mode(Client& client, const std::string& message)
