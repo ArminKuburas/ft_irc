@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/04 11:27:40 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/04 14:00:23 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -742,11 +742,24 @@ void Server::Join(Client& client, const std::string& message)
 		_channels.emplace(channel, newChannel);
 		it = _channels.find(channel);
 	}
+
+	// check if priovided key matches
     if (!it->second.getKey().empty() && it->second.getKey() != key)
     {
-        SendToClient(client, ":" + _name + " 475 " + client.getNick() + " " + channel + " :Bad channel key\r\n");
+        SendToClient(client, ":" + _name + " 475 " + client.getNick() + " " + channel + " :bad channel key\r\n");
         return ;
     }
+
+	// check if server has imposed limit
+	if (it->second.getMaxMembers())
+	{
+		// check if there is space
+		if ((it->second.getNbMembers() + 1) > it->second.getNumberMaxMembers())
+		{
+			SendToClient(client, ":" + _name + " 471 " + client.getNick() + " " + channel + " :channel is full\r\n");
+			return ;
+		}
+	}
 
 	it->second.addMember(&client);	
 	if (it->second.isMember(&client))
