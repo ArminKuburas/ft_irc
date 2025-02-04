@@ -21,6 +21,7 @@ Channel::Channel(const std::string &name, const std::string &key, const std::str
 	setPrivate(IsPrivate);
 	setInviteOnly(isInviteOnly);
 	_topic = topic;
+	_hasMemberLimit = false;
 }
 
 Channel::~Channel()
@@ -78,9 +79,19 @@ bool Channel::getTopicFlag() const
 	return (_operatorSetsTopic);
 }
 
-uint64_t	Channel::getMaxMembers() const
+uint64_t	Channel::getNumberMaxMembers() const
 {
 	return (_maxMembers);
+}
+
+bool	Channel::getMaxMembers() const
+{
+	return (_hasMemberLimit);
+}
+
+uint64_t Channel::getNbMembers() const
+{
+	return static_cast<uint64_t>(_members.size());
 }
 
 // Setters
@@ -94,21 +105,15 @@ void Channel::setKey( const std::string& key )
 	_key = key;
 }
 
-void Channel::setTopic( const std::string& newTopic, const std::string& setter)
+void Channel::setTopic( const std::string& newTopic, Client* client )
 {
-	_topic = newTopic;
-	_topicSetBy = setter;
-	_topicSetAt = time(NULL);
-}
-
-std::string	Channel::getSetter() const
-{
-	return (_topicSetBy);
-}
-
-time_t Channel::getTopicTime() const
-{
-	return (_topicSetAt);
+	if (getTopicFlag() == false)
+		_topic = newTopic;
+	else
+	{
+		if (isMember(client) && isOperator(client))
+			_topic = newTopic;
+	}
 }
 
 void Channel::setPrivate( bool isPrivate )
@@ -126,18 +131,25 @@ void Channel::setTopicFlag( bool operatorSetsTopic )
 	_operatorSetsTopic = operatorSetsTopic;
 }
 
-void Channel::setMaxMembers( uint64_t limit )
+void Channel::limitMaxMembers( uint64_t limit )
 {
 	_maxMembers = limit;
+}
+
+void Channel::setMaxMembers( bool active )
+{
+	_hasMemberLimit = active;
 }
 
 void Channel::setModes(char mode)
 {
 	this->_channelModes.insert(mode);
 	if (mode == 'i')
-			this->setInviteOnly(true);
+		this->setInviteOnly(true);
 	else if (mode == 't')
-			this->setTopicFlag(true);
+		this->setTopicFlag(true);
+	else if (mode == 'l')
+		this->setMaxMembers(true);
 }
 
 // Membership management
@@ -246,9 +258,11 @@ void	Channel::removeMode(char mode)
 {
 	_channelModes.erase(mode);
 	if (mode == 'i')
-			this->setInviteOnly(false);
+		this->setInviteOnly(false);
 	else if (mode == 't')
-			this->setTopicFlag(false);
+		this->setTopicFlag(false);
+	else if (mode == 'l')
+		this->setMaxMembers(false);
 }
 
 Client*	Channel::retrieveClient(std::string username)
