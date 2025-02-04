@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 21:00:18 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/04 14:26:52 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,8 +41,9 @@ void Server::initializeCommandHandlers()
 	_commands["PART"] = [this](Client& client, const std::string& message)		{Part(client, message); };
 	_commands["QUIT"] = [this](Client& client, const std::string& message) 		{Quit(client, message); };
 	_commands["PASS"] = [this](Client& client, const std::string& message) 		{Pass(client, message); };
-	_commands["STATS"] = [this](Client& client, const std::string& message) 		{Stats(client, message); };
-	_commands["WHOIS"] = [this](Client& client, const std::string& message) { Whois(client, message); };
+	_commands["STATS"] = [this](Client& client, const std::string& message) 	{Stats(client, message); };
+	_commands["WHOIS"] = [this](Client& client, const std::string& message) 	{ Whois(client, message); };
+	_commands["TOPIC"] = [this](Client& client, const std::string& message) 	{ Topic(client, message); };
 }
 
 Server::~Server()
@@ -422,15 +423,14 @@ void Server::Ping(Client& client, const std::string& message)
 {
 	size_t pos = message.find(" ");
 	if (pos == std::string::npos || pos + 1 >= message.size())
-	
 	{
-	    SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\r\n");
+		SendToClient(client, ":" + this->_name + " 409 " + "ERR_NOORIGIN :No origin specified\r\n");
 		return;
 	}
 	std::string server1 = message.substr(pos + 1);
 	if (server1.empty())
 	{
-		SendToClient(client, ":server 409 ERR_NOORIGIN :No origin specified\r\n");
+		SendToClient(client, ":" + this->_name + " 409 " + "ERR_NOORIGIN :No origin specified\r\n");
 		return;
 	}
 	//PONG response.
@@ -440,37 +440,217 @@ void Server::Ping(Client& client, const std::string& message)
 void Server::Mode(Client& client, const std::string& message)
 {
 	std::istringstream stream(message);
-	std::string command, nickname, modeChanges;
-	stream >> command >> nickname >> modeChanges;
+	std::string command, target, modeChanges, targetUser;
+	stream >> command >> target >> modeChanges >> targetUser;
+	bool channel = false;
+	bool user = false;
+	
 
-	if (nickname != client.getNick())
+	// check if target is either user or channel
+	if (modeChanges.empty() || target.empty())
 	{
-		SendToClient(client, ":server 502 ERR_USERSDONTMATCH :Cannot change mode for another user\r\n");
-		return;
+		SendToClient(client, ":" + _name + " 221 " + "RPL_UMODEIS " + client.getModes() + "\r\n");
+		return ;
 	}
-	if (modeChanges.empty())
+	if (target[0] == '#') // checking for channel
 	{
-		SendToClient(client, ":server 221 RPL_UMODEIS " + client.getModes() + "\r\n");
-        return;
-	}
-	bool adding = true;
-	for (char ch : modeChanges)
-	{
-		if (ch == '+')
-			adding = true;
-		else if (ch == '-')
-			adding = false;
-		else if (ch == 'i')
+		for (auto it = _channels.begin(); it != _channels.end(); ++it)
 		{
-			if (adding){
-				client.addMode(ch);
-				SendToClient(client, ":" + this->_name + " 221 " + client.getNick() + " +i\r\n");
-			}
+			if (it->second.getName() == target)
+				channel = true;
 			else
-				client.removeMode(ch);
+			{
+				SendToClient(client, ":" + _name + " 403 " + target +  ": Invalid channel name\r\n");
+				return ;
+			}
+		}
+	}
+	else
+	{
+		if (target == client.getNick())
+		{
+			user = true;
 		}
 		else
-			SendToClient(client, ":server 501 ERR_UMODEUNKNOWNFLAG :Unknown mode flag\r\n");
+		{
+			// ERR_USERSDONTMATCH
+			SendToClient(client, ":" + _name + " 502 " + ":Cannot change mode for another user\r\n");
+			return ;
+		}
+	}
+	// command: MODE
+	// target: user or channel (need to differentiate)
+	// modeChanges: flags +i +p +o +k
+	if (user)
+	{		
+		bool adding = true;
+		for (char ch : modeChanges)
+		{
+			if (ch == '+')
+				adding = true;
+			else if (ch == '-')
+				adding = false;
+			else if (ch == 'i') // this works with or without the addition sign?!
+			{
+				if (adding)
+				{
+					client.addMode(ch);
+					SendToClient(client, ":" + this->_name + " 221 " + client.getNick() + " +i\r\n");
+				}
+				else
+					client.removeMode(ch);
+			}
+			else
+			{
+				// ERR_UMODEUNKNOWNFLAG
+				SendToClient(client, ":" + this->_name + " 501 " + ":Unknown mode flag\r\n");
+			}
+		}
+	}
+	else if (channel)
+	{
+		auto it = _channels.find(target);
+		if (it == _channels.end())
+		{
+			// ERR_BADCHANMASK
+			SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + target + ": invalid channel name" + "\r\n");
+			return ;
+		}
+		bool adding = true;
+		for (char ch : modeChanges)
+		{
+			std::string operatorPrivilege = " 324 ";
+			std::string noOperatorPrivilege = " 482 ";
+			if (ch == '+')
+				adding = true;
+			else if (ch == '-')
+				adding = false;
+			else if (ch == 'i')
+			{
+				if (it->second.isOperator(&client) && it->second.isMember(&client))
+					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+				else
+					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+			}
+			else if (ch == 'k') // insert key to channel
+			{
+				if (it->second.isOperator(&client) && it->second.isMember(&client)) // pre-existing key needs a different treament for error
+				{
+					if (!it->second.getKey().empty())
+					{
+						SendToClient(client, ":" + this->_name + " 467 " + client.getNick() + " " + target + ":key already set\r\n");
+						return ;
+					}
+					if (targetUser.empty())
+					{
+						SendToClient(client, ":" + this->_name + " 461 " + client.getNick() + " " + target + ":key already set\r\n");
+						return ;
+					}
+					if (adding)
+						it->second.setKey(targetUser);
+					else
+						it->second.setKey("");
+					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+				}
+				else
+					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+			}
+			else if (ch == 'o') // give operator status
+			{
+				if (adding)
+				{
+					if (it->second.isOperator(&client) && it->second.isMember(&client) && !targetUser.empty())
+					{
+						Client* newOperator = it->second.retrieveClient(targetUser);
+						if (newOperator != nullptr)
+							it->second.addOperator(&client, newOperator);
+						else
+							SendToClient(client, ":" + this->_name + " 401 " + client.getNick() + " " + target + ":no such nick or channel\r\n");
+					}
+					else
+						SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+				}
+				else
+				{
+					if (it->second.isOperator(&client) && it->second.isMember(&client) && !targetUser.empty())
+					{
+						Client* possibleOperator = it->second.retrieveClient(targetUser);
+						if (possibleOperator != nullptr)
+							it->second.removeOperator(&client, possibleOperator, false);
+						else
+							SendToClient(client, ":" + this->_name + " 401 " + client.getNick() + " " + target + ":no such nick or channel\r\n");
+					}
+				}
+			}
+			else if (ch == 't') // change or view the channel topic
+			{
+				if (it->second.isOperator(&client) && it->second.isMember(&client))
+					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+				else
+					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+			}
+			else if (ch == 'l') // set/remove user limit to channel
+			{
+				if (it->second.isOperator(&client) && it->second.isMember(&client))
+				{
+					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+					if (adding)
+					{
+						if (targetUser.empty())
+							SendToClient(client, ":" + this->_name + " 461 " + client.getNick() + " " + ":not enough parameters\r\n");
+						if (it->second.getMaxMembers() == true)
+						{
+							try {
+								size_t pos;
+								uint64_t nbMembers = std::stoull(targetUser, &pos);
+								if (pos != targetUser.length())
+								{
+									SendToClient(client, ":" + this->_name + " 461 " + client.getNick() + " " + ":not enough parameters\r\n");
+									return ;
+								}
+								if (nbMembers < it->second.getNbMembers())
+									SendToClient(client, ":" + this->_name + " 471 " + client.getNick() + " " + ":channel is already over the limit\r\n");
+								it->second.limitMaxMembers(nbMembers);
+							} catch (const std::invalid_argument&)
+							{
+								SendToClient(client, ":" + this->_name + " 461 " + client.getNick() + " " + ":not enough parameters\r\n");
+								return ;
+							} catch (const std::out_of_range&) {
+								SendToClient(client, ":" + this->_name + " 461 " + client.getNick() + " " + ":not enough parameters\r\n");
+								return ;
+							}
+						}
+					}
+				}
+				else
+					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+			}
+			else
+			{ 
+				// ERR_UMODEUNKNOWNFLAG
+				SendToClient(client, ":" + this->_name + " 501 " + ":Unknown mode flag\r\n");
+			}
+		}
+	}
+	else
+	{
+		SendToClient(client, ":" + this->_name + " 221 " + "RPL_UMODEIS " + client.getModes() + "\r\n");
+		return ;
+	}
+		
+}
+
+void Server::ModeHelperChannel(Client& client, std::map<std::string, Channel>::iterator it, char mode, bool adding, std::string code)
+{
+	if (adding)
+	{
+		it->second.setModes(mode); // +o, +k, +l need to be handled on server side. Class cannot handle.
+		SendToClient(client, ":" + this->_name + code + it->first + " +" + mode + "\r\n");
+	}
+	else
+	{
+		it->second.removeMode(mode);
+		SendToClient(client, ":" + this->_name + code + it->first + " -" + mode + "\r\n");
 	}
 }
 
@@ -481,7 +661,8 @@ void Server::Priv(Client& client, const std::string& message)
 	stream >> command >> target;
 	if (target.empty())
 	{
-		SendToClient(client, "ERR_NEEDMOREPARAMS PRIVMSG :Not enough parameters\r\n");
+		// ERR_NEEDMOREPARAMS
+		SendToClient(client, ":" + _name + " 461 " + " PRIVMSG :Not enough parameters\r\n");
 		return;
 	}
 
@@ -496,7 +677,8 @@ void Server::Priv(Client& client, const std::string& message)
 		auto it = _channels.find(target);
 		if (it == _channels.end())
 		{
-			SendToClient(client, "ERR_NOSUCHCHANNEL " + target + " :No such channel\r\n");
+			// ERR_NOSUCHCHANNEL
+			SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + target + ": Invalid channel name\r\n");
 			return ;
 		}
 		if (it->second.isMember(&client))
@@ -505,6 +687,7 @@ void Server::Priv(Client& client, const std::string& message)
 		{
 			std::string ERR_NOMEMBER = "Zorg: you are not a member of the channel " + target + "\r\n";
 			SendToClient(client, ERR_NOMEMBER);
+			SendToClient(client, ":" + _name + " 442 " + client.getNick() + " " + target + ": you're not in the channel\r\n");
 		}
 	}
 	else
@@ -517,7 +700,7 @@ void Server::Priv(Client& client, const std::string& message)
 			SendToClient(*it, formattedMessage);
 		}
 		else
-			SendToClient(client, "ERR_NOSUCHNICK " + target + " :No such nick/channel\r\n");
+			SendToClient(client, ":" + _name + " 401 " + client.getNick() + " " + target + " :No such nick/channel\r\n");
 	}
 }
 
@@ -536,51 +719,67 @@ void Server::Quit(Client& client, const std::string& message)
 		if (c.getNick() != client.getNick())
 			SendToClient(c, quitBroadcast);
 	}
-	std::cout << "[Zorg] Client " << client.getNick() << " has disconnected\n";
+	std::cout << "[Zorg] Client " << client.getNick() << " has disconnected\r\n";
 }
 
 void Server::Join(Client& client, const std::string& message)
 {
 	std::istringstream stream(message);
-	std::string command, channel, key; // key still needs to be implemented
-	
-	// need to parse when the user inputs a channel name without '#'
+	std::string command, channel, key;
 	stream >> command >> channel >> key;
 	
-	// simple error check
 	if (channel.empty() || channel[0] != '#')
 	{
 		// ERR_BADCHANMASK
-		SendToClient(client, ":Server 476 " + client.getNick() + " " + channel + ": Invalid channel name\r\n");
+		SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + ":invalid channel name" + "\r\n");
 		return ;
 	}
 
 	auto it = _channels.find(channel);
-	// we did not find any channel
 	if (it == _channels.end()) 
 	{
-		Channel newChannel(channel, key, "na", false, false);
+		Channel newChannel(channel, key, "", false, false);
 		_channels.emplace(channel, newChannel);
 		it = _channels.find(channel);
 	}
-	// key/password check 
-	if (it->second.getKey() == key)
-		it->second.addMember(&client);
-	else
+
+	// check if priovided key matches
+    if (!it->second.getKey().empty() && it->second.getKey() != key)
+    {
+        SendToClient(client, ":" + _name + " 475 " + client.getNick() + " " + channel + " :bad channel key\r\n");
+        return ;
+    }
+
+	// check if server has imposed limit
+	if (it->second.getMaxMembers())
 	{
-		SendToClient(client, ":ERR_BADCHANNELKEY " + client.getNick() + " " + channel + ": Invalid key\r\n");
-		return ;
+		// check if there is space
+		if ((it->second.getNbMembers() + 1) > it->second.getNumberMaxMembers())
+		{
+			SendToClient(client, ":" + _name + " 471 " + client.getNick() + " " + channel + " :channel is full\r\n");
+			return ;
+		}
 	}
+
+	it->second.addMember(&client);	
 	if (it->second.isMember(&client))
 	{
 		SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
 		std::string namesList;
 		for (Client* member : it->second.getMembers())
 			namesList += member->getNick() + " ";
-		namesList += "\r\n";
-		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "Members: " + namesList + "\r\n", &client, true);
-		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "Topic: " + it->second.getTopic() + "\r\n", &client, true);
-		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "has joined the channel\r\n", &client, false);
+		SendToClient(client, ":" + _name + " 353 " + client.getNick() + " = " + channel + " :" + namesList + "\r\n");
+		SendToClient(client, ":" + _name + " 366 " + client.getNick() + " " + channel + " :End of /NAMES list.\r\n");
+		if (!it->second.getTopic().empty())
+		{
+			SendToClient(client, ":" + _name + " 332 " + client.getNick() + " " + channel + " :" + it->second.getTopic() + "\r\n");
+			
+			SendToClient(client, ":" + _name + " 333 " + client.getNick() + " " + channel + " " + it->second.getSetter() + " " + std::to_string(it->second.getTopicTime()) + "\r\n");
+		}
+		else
+		{
+			SendToClient(client, ":" + _name + " 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
+		}
 	}
 }
 
@@ -595,12 +794,12 @@ int Server::Pass(Client& client, const std::string& message){
 	}
 
 	if(password.empty()){
-		SendToClient(client, _name + " 461 " + client.getNick() +  "PASS :Not enough parameters\r\n");
+		SendToClient(client, ":" + _name + " 461 " + client.getNick() +  "PASS :Not enough parameters\r\n");
 		return 0;
 	}
 
 	if(password != _password){
-		SendToClient(client, _name + " 464 " + client.getNick() +  " :Password Incorrect\r\n");
+		SendToClient(client, ":" + _name + " 464 " + client.getNick() +  " :Password Incorrect\r\n");
 		return 0;
 	}
 	// no response message in case of correct PASS
@@ -635,12 +834,13 @@ void Server::SendToChannel(const std::string& channelName, const std::string& me
 void Server::Part(Client& client, const std::string& message)
 {
 	std::istringstream stream(message);
-	std::string command, channel, key;
-	stream >> command >> channel >> key;
+	std::string command, channel;
+	stream >> command >> channel;
 
 	if (channel.empty() || channel[0] != '#')
 	{
-		SendToClient(client, ":Server 476 " + client.getNick() + " " + channel + ": Invalid channel name\r\n");
+		//ERR_BADCHANMASK
+		SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + ": invalid channel syntax name\r\n");
 		return ;
 	}
 
@@ -648,7 +848,8 @@ void Server::Part(Client& client, const std::string& message)
 	// we did not find any channel
 	if (it == _channels.end()) 
 	{
-		SendToClient(client, ":ERR_NOSUCHCHANNEL " + client.getNick() + " " + channel + ": Invalid channel name\r\n");
+		//ERR_NOSUCHCHANNEL
+		SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channel + ": invalid channel name\r\n");
 		return ;
 	}
 	if (it->second.isOperator(&client))
@@ -659,15 +860,68 @@ void Server::Part(Client& client, const std::string& message)
 		{
 			for (Client* member : it->second.getMembers())
 			{
-				// first possible members is the new operator
-				it->second.addOperator(nullptr, member);
-				break ;
+				if (member->getClientFd() != client.getClientFd())
+				{
+					it->second.addOperator(nullptr, member);
+					break ;
+				}
 			}
 			SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + client.getNick() + " was the last operator and left. First of the list has been made operator" + "\r\n", &client, true);
 		}
 	}
-	it->second.removeMember(&client);
-	SendToClient(client, ":" + client.getNick() + " PART " + channel + "\r\n");
+	if (it->second.isMember(&client))
+	{
+		it->second.removeMember(&client);
+		SendToClient(client, ":" + client.getNick() + " PART " + channel + "\r\n");
+	}
+	else
+		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "cannot part because you are not a member" + "\r\n", &client, true);
 	if (it->second.isChannelEmpty())
 		_channels.erase(channel);
+}
+
+void	Server::Topic(Client& client, const std::string& message)
+{
+	std::vector<std::string> tokens;
+	std::istringstream stream(message);
+	std::string token;
+	while (stream >> token)
+		tokens.push_back(token);
+	if (tokens.size() < 2)
+	{
+		SendToClient(client, ":" + _name + " 461 " + client.getNick() + " TOPIC :Not enough parameters\r\n");
+		return ;
+	}
+	std::string channel_name = tokens[1];
+	auto channelIt = _channels.find(channel_name);
+	if (channelIt == _channels.end())
+	{
+		SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channel_name + " :No such channel\r\n");
+		return ;
+	}
+	Channel& channel = channelIt->second;
+	if (!channel.isMember(&client))
+	{
+		SendToClient(client, ":" + _name + " 442 " + client.getNick() + " " + channel_name + " :You're not on that channel\r\n");
+		return ;
+	}
+	if (tokens.size() == 2)
+	{
+		if (channel.getTopic().empty())
+			SendToClient(client, ":" + _name + " 331 " + client.getNick() + " " + channel_name + " :No topic is set\r\n");
+		else
+			SendToClient(client, ":" + _name + " 332 " + client.getNick() + " " + channel_name + " :" + channel.getTopic() + "\r\n");
+		return ;
+	}
+	if (!channel.isOperator(&client))
+	{
+		SendToClient(client, ":" + _name + " 482 " + client.getNick() + " " + channel_name + " :You're not a channel operator\r\n");
+		return ;
+	}
+	std::string new_topic = message.substr(message.find(':') + 1);
+	channel.setTopic(new_topic, client.getNick());
+	for (Client* member : channel.getMembers())
+	{
+		SendToClient(*member, ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " TOPIC " + channel_name + " :" + new_topic + "\r\n");
+	}
 }

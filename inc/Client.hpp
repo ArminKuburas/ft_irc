@@ -36,31 +36,31 @@ class Client
 		~Client();
 		
 		// getters
-		sockaddr_in getClientAddr();
+		sockaddr_in 		getClientAddr();
 		const std::string	getHost() const;
-		socklen_t 	getClientAddrLen();
-		int 		getClientFd() const;
-		struct pollfd *getFds();
+		socklen_t 			getClientAddrLen();
+		int 				getClientFd() const;
+		struct pollfd*		getFds();
 		const std::string	getNick() const;
 		const std::string	getUser() const;
 		const std::string	getRealname() const;
-		bool			getAuthentication() const;
-		bool			getRegistration() const;
+		bool				getAuthentication() const;
+		bool				getRegistration() const;
 
 		// setters
-		void	setClientAddr( sockaddr_in clientAddr );
-		void	setClientAddrLen( socklen_t clientAddrLen );
-		void	setClientFd( int clientFd );
-		void	setPollFd( struct pollfd *fds );
-		void	setNick( std::string nick );
-		void	setUser( std::string user );
-		void	setRealname( std::string realname );
-		void	setAuthentication(bool auth);
-		void	setRegistration(bool reg);
+		void				setClientAddr( sockaddr_in clientAddr );
+		void				setClientAddrLen( socklen_t clientAddrLen );
+		void				setClientFd( int clientFd );
+		void				setPollFd( struct pollfd *fds );
+		void				setNick( std::string nick );
+		void				setUser( std::string user );
+		void				setRealname( std::string realname );
+		void				setAuthentication(bool auth);
+		void				setRegistration(bool reg);
 
 		//mode
-		bool	hasMode(char mode) const;
-		void	addMode(char mode);
-		void	removeMode(char mode);
-		std::string getModes() const;
+		bool				hasMode(char mode) const;
+		void				addMode(char mode);
+		void				removeMode(char mode);
+		std::string 		getModes() const;
 };
