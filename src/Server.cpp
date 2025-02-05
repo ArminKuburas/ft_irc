@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/04 17:41:04 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/05 15:28:06 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,6 +45,7 @@ void Server::initializeCommandHandlers()
 	_commands["WHOIS"] = [this](Client& client, const std::string& message) 	{ Whois(client, message); };
 	_commands["TOPIC"] = [this](Client& client, const std::string& message) 	{ Topic(client, message); };
 	_commands["INVITE"] = [this](Client& client, const std::string& message) 	{ Invite(client, message); };
+	_commands["KICK"] = [this](Client& client, const std::string& message) 	{ Kick(client, message); };
 }
 
 Server::~Server()
@@ -938,7 +939,7 @@ void Server::Invite(Client& client, const std::string& message)
 		SendToClient(client, ":" + _name + " 461 " + client.getNick() + " INVITE :Not enough parameters\r\n");
 		return;
 	}
-	if (ChannelName[0] != '#')
+	if (channelName[0] != '#')
 	{
 		SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channelName + " :No such channel\r\n");
 		return;
@@ -970,4 +971,96 @@ void Server::Invite(Client& client, const std::string& message)
 	}
 	SendToClient(*TargetIt, ":" + client.getNick() + " INVITE " + nickname + " " + channelName + "\r\n");
 	SendToClient(client, ":" + _name + " 341 " + client.getNick() + " " + nickname + " " + channelName + "\r\n");
+}
+
+void Server::Kick(Client& client, const std::string& message)
+{
+	std::istringstream stream(message);
+	std::string command, channelNames, usersToKick, comment;
+	stream >> command, channelNames, usersToKick, comment;
+	std::getline(stream, comment);
+	if (!comment.empty() && comment[0] == ':')
+		comment = comment.substr(1);
+	else if (comment.empty())
+		comment = client.getNick();
+	if (channelNames.empty() || usersToKick.empty())
+	{
+		SendToClient(client, ":" + _name + " 476 " + kicker.getNick() + " " + channelName + " :Invalid channel syntax\r\n");
+	}
+	std::vector<std::string> channels, users;
+	std::istringstream channelStream(channelNames), userStream(usersToKick);
+	std::string token;
+
+	while (std::getline(channelStream, token, ','))
+	{
+		channels.push_back(token);
+	}
+	while (std::getline(userStream, token, ','))
+	{
+		users.push_back(token);
+	}
+	if (channels.size() != 1 && channels.size() != users.size())
+	{
+		SendToClient(client, ":" + _name + " 461 " + client.getNick() + " KICK :Mismatched channels and users\r\n");
+		return;
+	}
+	
+	for (size_t i = 0; i < users.size(); ++i)
+	{
+		std::string channelName = (channels.size() == 1) ? channels[0] : channels[i];
+		std::string userToKick = users[i];
+		if (channelName[0] != '#')
+		{
+			SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channelName + " :Invalid channel syntax\r\n");
+			continue;
+		}
+		auto channelIt = _channels.find(channelName);
+		if (channelIt == _channels.end())
+		{
+			SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channelName + " :No such channel\r\n");
+			continue;
+		}
+		Channel &channel = channelIt->second;
+		if (!channel.isMember(&client))
+		{
+	        SendToClient(client, ":" + _name + " 442 " + client.getNick() + " " + channelName + " :You're not on that channel\r\n");
+			continue;
+		}
+		if (!channel.isOperator(&client))
+		{
+			SendToClient(client, ":" + _name + " 482 " + client.getNick() + " " + channelName + " :You're not channel operator\r\n");
+			continue;
+		}
+		auto targetIt = std::find_if(_clients.begin(), _clients.end(), [&userToKick](Client& c) {return c.getNick() == userToKick; });
+		if (targetIt == _clients.end())
+		{
+			SendToClient(client, ":" + _name + " 401 " + client.getNick() + " " + userToKick + " :No such nick\r\n");
+			continue;
+		}
+		
+		Client& target = *targetIt;
+		if (!channel.isMember(&target))
+		{
+			SendToClient(client, ":" + _name + " 441 " + client.getNick() + " " + userToKick + " " + channelName + " :They are not on that channel\r\n");
+			continue;
+		}
+		std::string KickMessage = ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " KICK " + channelName + " " + userToKick + " :" + comment + "\r\n";
+		SendToChannel(channelName, KickMessage, nullptr, false);
+		SendToClient(target, KickMessage);
+		channel.removeMember(&target);
+		if (channel.isOperator(&target)) {
+			channel.removeOperator(&target, nullptr, true);
+			if (channel.noOperators())
+			{
+				for (Client* member : channel.getMembers())
+				{
+					if (member->getClientFd() != client.getClientFd())
+					{
+						channel.addOperator(nullptr, member);
+						SendToChannel(channelName, ":" + member->getNick() + " PRIVMSG " + channelName + " :The kicked user was an operator. " + member->getNick() + " has been promoted.\r\n", nullptr, true);
+					}
+				}
+			}
+		}
+	}
 }
