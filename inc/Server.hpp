@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/04 11:27:53 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/04 11:27:54 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/05 10:02:51 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@
 #include <functional>
 #include <map>
 #include <sstream>
+#include <ctime>
 #include "Channel.hpp"
 
 #define SERVER_NAME "Zorg"
@@ -106,6 +107,7 @@ class Server
 
 		void 						initializeCommandHandlers();
 		std::vector<std::string>	splitMessages(const std::string& message);
+		void checkClientTimeouts();
 
 
 };

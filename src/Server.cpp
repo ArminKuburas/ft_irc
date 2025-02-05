@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 09:07:27 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/05 10:52:31 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,13 +97,26 @@ void	Server::Run()
     fds[0].fd = this->_serverSocket;
     fds[0].events = POLLIN;
 
+	// define the maximum interval of time between client connection check
+	time_t lastCheck = std::time(NULL);
+	const time_t checkInterval = 60;
+
     while (true) 
 	{
-        int poll_result = poll(fds, nfds, -1);
+		// poll returns either at any activity of checkInterval time has passed
+        int poll_result = poll(fds, nfds, checkInterval * 1000);
         if (poll_result < 0) {
             perror("poll failed");
             return;
         }
+
+		// check for dead clients
+		time_t currentTime = std::time(NULL);
+		if ((currentTime - lastCheck) >= checkInterval)
+		{
+			checkClientTimeouts();
+			lastCheck = currentTime;
+		}
 
         for (int i = 0; i < nfds; ++i) {
             if (fds[i].revents & POLLIN) {
@@ -272,6 +285,9 @@ void Server::handleMessage(Client& client, const std::string& message)
 	std::string command;
 	stream >> command;
 	
+	// update activity timestamp
+	client.setLastActivity();
+
 	auto handler = _commands.find(command);
 	if (handler != _commands.end()) 
 	{
@@ -308,6 +324,21 @@ void Server::disconnectClient(Client& client) {
 	close(client.getClientFd());
 	_clients.erase(std::remove_if(_clients.begin(), _clients.end(),
 		[fd = client.getClientFd()](const Client& c) { return c.getClientFd() == fd; }), _clients.end());
+}
+
+void Server::checkClientTimeouts()
+{
+	time_t currentTime = time(NULL);
+	const time_t timeout = 300; // 5 minutes in seconds
+	std::cout << "Checking if clients are alive" << std::endl;
+	for (auto& client : _clients)
+	{
+		// if more than 5 minutes since last activity sent PING
+		if ((currentTime - client.getLastActivity()) > timeout){
+			std::cout << "PING THE DEAD" << std::endl;
+			SendToClient(client, "PING " + client.getNick() + "\r\n");
+		}
+	}
 }
 
 void Server::Cap(Client& client, const std::string& message)
@@ -435,7 +466,7 @@ void Server::Ping(Client& client, const std::string& message)
 	// If target is the server name, respond with PONG
 	if (target == _name)
 	{
-		SendToClient(client, ":" + _name + " PONG " + _name + " :" + target + "\r\n");
+		SendToClient(client, "PONG :"+ target + "\r\n");
 	}
 	else
 	{
