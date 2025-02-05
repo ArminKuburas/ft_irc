@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/04 11:27:53 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 10:02:51 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/05 11:44:52 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,7 +58,7 @@ class Server
 		std::vector<Client>						_clients;
 		std::map<std::string, Channel> 			_channels;
 		std::map<std::string, CommandHelper>	_commands;
-		void disconnectClient(Client& client);
+		void disconnectClient(Client& client, const std::string& reason);
 		
 	public:
 		// constructor

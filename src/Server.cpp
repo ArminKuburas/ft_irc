@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 11:11:28 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/05 11:45:21 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -151,11 +151,23 @@ void	Server::Run()
 						for (auto& client : _clients)
 						{
 							if(client.getClientFd() == fds[i].fd){
-								disconnectClient(client);
+								disconnectClient(client, "(Client Quit)");
+								// Properly reset the fd slot that's being removed
+								fds[i].fd = -1;
+								fds[i].events = 0;
+								fds[i].revents = 0;
 								break;
 							}
 						}
-						fds[i] = fds[--nfds];
+						// Move last fd to current position only if we're not at the last position
+						if (i < nfds - 1) {
+							fds[i] = fds[nfds - 1];
+						}
+						// Clear the last fd slot
+						fds[nfds - 1].fd = -1;
+						fds[nfds - 1].events = 0;
+						fds[nfds - 1].revents = 0;
+						--nfds;
 						--i;
 					} else {
 						buffer[bytes_read] = '\0';
@@ -167,7 +179,7 @@ void	Server::Run()
 						if (!client->getRegistration()) {
 							int grant_access = connectionHandshake(*client, messages); // Pass individual message
 							if (!grant_access) {
-								disconnectClient(*client);
+								disconnectClient(*client, "(Invalid Password)");
 								--i;
 							}
 						} else {
@@ -197,7 +209,6 @@ int Server::connectionHandshake(Client& client, std::vector<std::string> message
 		if (command == "PASS") {
 			int grant_access = Server::Pass(client, message);
 			if (!grant_access) {
-				SendToClient(client, ":" + _name + " 464 * :Password incorrect\r\n");
 				return 0;
 			}
 			client.setAuthentication(true);
@@ -318,12 +329,14 @@ void Server::SendToClient(Client& client, const std::string& message)
 	}
 }
 
-void Server::disconnectClient(Client& client) {
-	SendToClient(client, "ERROR :Closing Link: " + client.getNick() + " (Client Quit)\r\n");
+void Server::disconnectClient(Client& client, const std::string& reason) {
+	SendToClient(client, "ERROR :Closing Link: " + client.getNick() + " " + reason + "\r\n");
 	shutdown(client.getClientFd(), SHUT_WR);
 	close(client.getClientFd());
 	_clients.erase(std::remove_if(_clients.begin(), _clients.end(),
 		[fd = client.getClientFd()](const Client& c) { return c.getClientFd() == fd; }), _clients.end());
+
+	client.setClientFd(-1);
 }
 
 void Server::checkClientTimeouts()
@@ -339,13 +352,13 @@ void Server::checkClientTimeouts()
 			// If client hasn't responded to PING within 10 seconds
 			if ((currentTime - client.getPingTime()) > pingTimeout)
 			{
-				disconnectClient(client);
+				disconnectClient(client, "(Inactivity timeout)");
 				continue;
 			}
 		}
 		// if more than 5 minutes since last activity sent PING
 		if ((currentTime - client.getLastActivity()) > timeout){
-			std::cout << "PING THE DEAD" << std::endl;
+			std::cout << "[Zorg] PING dead clients..." << std::endl;
 			SendToClient(client, "PING " + client.getNick() + "\r\n");
 			client.setPingStatus(true);
 		}
@@ -855,7 +868,7 @@ int Server::Pass(Client& client, const std::string& message){
 	}
 
 	if(password != _password){
-		SendToClient(client, ":" + _name + " 464 " + client.getNick() +  " :Password Incorrect\r\n");
+		SendToClient(client, ":" + _name + " 464 * :Password Incorrect\r\n");
 		return 0;
 	}
 	// no response message in case of correct PASS
