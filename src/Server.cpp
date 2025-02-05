@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 10:52:31 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/05 11:11:28 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -330,13 +330,24 @@ void Server::checkClientTimeouts()
 {
 	time_t currentTime = time(NULL);
 	const time_t timeout = 300; // 5 minutes in seconds
-	std::cout << "Checking if clients are alive" << std::endl;
+	const time_t pingTimeout = 10; // 10 seconds to respond to PING
+
 	for (auto& client : _clients)
 	{
+		if (client.getAwaitingPong())
+		{
+			// If client hasn't responded to PING within 10 seconds
+			if ((currentTime - client.getPingTime()) > pingTimeout)
+			{
+				disconnectClient(client);
+				continue;
+			}
+		}
 		// if more than 5 minutes since last activity sent PING
 		if ((currentTime - client.getLastActivity()) > timeout){
 			std::cout << "PING THE DEAD" << std::endl;
 			SendToClient(client, "PING " + client.getNick() + "\r\n");
+			client.setPingStatus(true);
 		}
 	}
 }
@@ -477,15 +488,9 @@ void Server::Ping(Client& client, const std::string& message)
 
 void Server::Pong(Client& client, const std::string& message)
 {
-	std::istringstream stream(message);
-	std::string command, target;
-	stream >> command >> target;
-
-	// Ignore all PONG messages from clients
-	// They are only meaningful when they come as a response to our PING
-	(void)client;
+	// no need to answer anything, just update ping status
 	(void)message;
-	return;
+	client.setPingStatus(false);
 }
 
 void Server::Mode(Client& client, const std::string& message)

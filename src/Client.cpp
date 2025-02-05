@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 10:02:00 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/05 11:02:08 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -148,10 +148,24 @@ const std::string Client::getHost () const{
 	return this->_clientHost;
 }
 
-time_t Client::getLastActivity(){
+time_t Client::getLastActivity() const{
 	return (_lastActivity);
 }
 
 void Client::setLastActivity(){
 	_lastActivity = std::time(nullptr);
+}
+
+void Client::setPingStatus(bool awaiting){
+	_awaitingPong = awaiting;
+	if(awaiting)
+		_pingTime = time(NULL);
+}
+
+bool Client::getAwaitingPong() const {
+	return _awaitingPong;
+}
+
+time_t Client::getPingTime() const{
+	return _pingTime;
 }

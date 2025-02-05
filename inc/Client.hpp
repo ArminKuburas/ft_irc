@@ -28,7 +28,9 @@ class Client
 		std::set<char>		_userModes;
 		int					_isAuthenticated = false;
 		int					_isRegistered = false;
-		time_t			_lastActivity;
+		time_t				_lastActivity;
+		bool				_awaitingPong;
+		time_t				_pingTime;
 	public:
 		// constructor
 		Client( int fd, const sockaddr_in& addr);
@@ -47,7 +49,9 @@ class Client
 		const std::string	getRealname() const;
 		bool				getAuthentication() const;
 		bool				getRegistration() const;
-		time_t		getLastActivity();
+		time_t				getLastActivity() const;
+		bool				getAwaitingPong() const;
+		time_t				getPingTime() const;
 
 		// setters
 		void				setClientAddr( sockaddr_in clientAddr );
@@ -60,6 +64,7 @@ class Client
 		void				setAuthentication(bool auth);
 		void				setRegistration(bool reg);
 		void				setLastActivity();
+		void				setPingStatus(bool awaiting);
 
 		//mode
 		bool				hasMode(char mode) const;
