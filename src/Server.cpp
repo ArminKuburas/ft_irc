@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 11:45:21 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/05 13:01:32 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -177,7 +177,7 @@ void	Server::Run()
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
 						std::vector<std::string> messages = splitMessages(receivedData);
 						if (!client->getRegistration()) {
-							int grant_access = connectionHandshake(*client, messages); // Pass individual message
+							int grant_access = connectionHandshake(*client, messages, fds[i].fd); // Pass individual message
 							if (!grant_access) {
 								disconnectClient(*client, "(Invalid Password)");
 								--i;
@@ -195,9 +195,15 @@ void	Server::Run()
 	}
 }
 
-int Server::connectionHandshake(Client& client, std::vector<std::string> messages) {
+int Server::connectionHandshake(Client& client, std::vector<std::string> messages, int fd) {
 
-	std::cout << "[Zorg] Connection Handshake......." << std::endl;
+	// If no messages received, keep connection alive
+	if (messages.empty()) {
+		return 1;
+	}
+	client.setLastActivity();
+
+	std::cout << "[Zorg] Connection Handshake for Client: " << fd << std::endl;
 	for(const std::string& message : messages) {
 		std::istringstream stream(message);
 		std::string command;
@@ -214,21 +220,19 @@ int Server::connectionHandshake(Client& client, std::vector<std::string> message
 			client.setAuthentication(true);
 		} else if (command == "NICK") {
 			// Only allow NICK/USER after PASS
-			if (!client.getAuthentication()) {
+			if (!client.getAuthentication())
 				SendToClient(client, ":" + _name + " 451 * :You have not registered\r\n");
-				return 0;
-			}
-			Server::Nick(client, message);
+			else
+				Server::Nick(client, message);
 		} else if (command == "USER") {
-			if (!client.getAuthentication()) {
+			if (!client.getAuthentication())
 				SendToClient(client, ":" + _name + " 451 * :You have not registered\r\n");
-				return 0;
-			}
-			Server::User(client, message);
+			else
+				Server::User(client, message);
 		} else if (command == "CAP") {
 			Server::Cap(client, message);
 		} else {
-			SendToClient(client, ":" + _name + " 421 " + command + " :Unknown command\r\n");
+			SendToClient(client, ":" + _name + " 451 * :You have not registered\r\n");
 		}
 	}
 	// Register user
@@ -314,7 +318,7 @@ void Server::SendToClient(Client& client, const std::string& message)
 {
 	if (client.getClientFd() == -1) {
 		std::cerr << "[Zorg] Invalid file descriptor for client " << client.getClientFd() << std::endl;
-	return;
+		return;
 	}
 	ssize_t bytes_sent = send(client.getClientFd(), message.c_str(), message.length(), 0);
 	if (bytes_sent < 0) {
@@ -788,7 +792,7 @@ void Server::Quit(Client& client, const std::string& message)
 		if (c.getNick() != client.getNick())
 			SendToClient(c, quitBroadcast);
 	}
-	std::cout << "[Zorg] Client " << client.getNick() << " has disconnected\r\n";
+	std::cout << "[Zorg] Client " << client.getNick() << " has disconnected\r\n" << std::endl;;
 }
 
 void Server::Join(Client& client, const std::string& message)

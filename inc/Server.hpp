@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/04 11:27:53 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 11:44:52 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/05 12:20:13 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,7 +85,7 @@ class Server
 		void						SendToClient(Client& client, const std::string& message);
 		void						SendToChannel(const std::string& channelName, const std::string& message, Client* sender, bool justJoined);
 		void						handleMessage(Client& client, const std::string& message);
-		int							connectionHandshake(Client& client, std::vector<std::string> messages);
+		int							connectionHandshake(Client& client, std::vector<std::string> messages, int fd);
 		void						ModeHelperChannel(Client &client, std::map<std::string, Channel>::iterator it, char mode, bool adding, std::string code);
 
 		// Command handlers
