@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/04 16:00:29 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/05 09:07:27 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -426,12 +426,22 @@ void Server::Ping(Client& client, const std::string& message)
 	std::string command, target;
 	stream >> command >> target;
 
+	// No target for the PING
 	if (target.empty())
 	{
 		SendToClient(client, ":" + _name + " 409 " + client.getNick() + " :No origin specified\r\n");
 		return;
 	}
-	SendToClient(client, ":" + _name + " PONG " + _name + " :" + target + "\r\n");
+	// If target is the server name, respond with PONG
+	if (target == _name)
+	{
+		SendToClient(client, ":" + _name + " PONG " + _name + " :" + target + "\r\n");
+	}
+	else
+	{
+		// Any other target (including client nicknames) should get ERR_NOSUCHSERVER
+		SendToClient(client, ":" + _name + " 402 " + client.getNick() + " " + target + " :No such server\r\n");
+	}
 }
 
 void Server::Pong(Client& client, const std::string& message)
@@ -440,12 +450,11 @@ void Server::Pong(Client& client, const std::string& message)
 	std::string command, target;
 	stream >> command >> target;
 
-	if (target.empty())
-	{
-		SendToClient(client, ":" + _name + " 409 " + client.getNick() + " :No origin specified\r\n");
-		return;
-	}
-	// The client has confirmed they're alive, so we don't need to do anything else
+	// Ignore all PONG messages from clients
+	// They are only meaningful when they come as a response to our PING
+	(void)client;
+	(void)message;
+	return;
 }
 
 void Server::Mode(Client& client, const std::string& message)
