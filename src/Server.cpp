@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: fdessoy- <fdessoy-@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/04 14:26:52 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/05 15:43:55 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -528,7 +528,10 @@ void Server::Mode(Client& client, const std::string& message)
 			else if (ch == 'i')
 			{
 				if (it->second.isOperator(&client) && it->second.isMember(&client))
+				{
 					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+					SendToChannel(it->second.getName(), ":" + this->_name + " 324 " + client.getNick() + " " + target + ":channel set to invite only" + "\r\n", &client, false);
+				}
 				else
 					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
 			}
@@ -547,9 +550,17 @@ void Server::Mode(Client& client, const std::string& message)
 						return ;
 					}
 					if (adding)
+					{
 						it->second.setKey(targetUser);
+						SendToChannel(it->second.getName(), ":" + this->_name + " 324 " + client.getNick() + " " + target + ":key set for channel" + it->second.getName() + "\r\n", &client, false);
+
+					}
 					else
+					{
 						it->second.setKey("");
+						SendToChannel(it->second.getName(), ":" + this->_name + " 324 " + client.getNick() + " " + target + ":key unset for channel" + it->second.getName() + "\r\n", &client, false);
+
+					}
 					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
 				}
 				else
@@ -563,7 +574,11 @@ void Server::Mode(Client& client, const std::string& message)
 					{
 						Client* newOperator = it->second.retrieveClient(targetUser);
 						if (newOperator != nullptr)
+						{
 							it->second.addOperator(&client, newOperator);
+							SendToChannel(it->second.getName(), ":" + this->_name + " 324 " + client.getNick() + " " + target + ":operator privileges given to " + newOperator->getNick() + "\r\n", &client, false);
+							//>> :fdessoy-!~fdessoy-@194.136.126.52 MODE #SUPER_BBQ +o fdessoy-_
+						}
 						else
 							SendToClient(client, ":" + this->_name + " 401 " + client.getNick() + " " + target + ":no such nick or channel\r\n");
 					}
@@ -576,16 +591,23 @@ void Server::Mode(Client& client, const std::string& message)
 					{
 						Client* possibleOperator = it->second.retrieveClient(targetUser);
 						if (possibleOperator != nullptr)
+						{
 							it->second.removeOperator(&client, possibleOperator, false);
+							SendToChannel(it->second.getName(), ":" + this->_name + " 324 " + client.getNick() + " " + target + ":operator privileges removed from " + possibleOperator->getNick() + "\r\n", &client, false);
+						}
 						else
 							SendToClient(client, ":" + this->_name + " 401 " + client.getNick() + " " + target + ":no such nick or channel\r\n");
+
 					}
 				}
 			}
 			else if (ch == 't') // change or view the channel topic
 			{
 				if (it->second.isOperator(&client) && it->second.isMember(&client))
+				{
+					SendToChannel(it->second.getName(), ":" + this->_name + " 324 " + client.getNick() + " " + target + ":topic change restricted for operators " + "\r\n", &client, false);
 					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+				}
 				else
 					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
 			}
@@ -611,6 +633,7 @@ void Server::Mode(Client& client, const std::string& message)
 								if (nbMembers < it->second.getNbMembers())
 									SendToClient(client, ":" + this->_name + " 471 " + client.getNick() + " " + ":channel is already over the limit\r\n");
 								it->second.limitMaxMembers(nbMembers);
+								SendToChannel(it->second.getName(), ":" + this->_name + " 324 " + client.getNick() + " " + target + ":member limit set to " + std::to_string(nbMembers) + "\r\n", &client, false);
 							} catch (const std::invalid_argument&)
 							{
 								SendToClient(client, ":" + this->_name + " 461 " + client.getNick() + " " + ":not enough parameters\r\n");
