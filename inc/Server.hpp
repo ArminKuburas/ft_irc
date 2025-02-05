@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/04 11:27:53 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/04 11:27:54 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/05 20:52:48 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,9 @@
 #include "Channel.hpp"
 
 #define SERVER_NAME "Zorg"
+#define JUST_JOINED 1
+#define UNIVERSAL_MSG 2
+#define NORMAL_MSG 3
 
 class Client;
 class Channel;
@@ -82,26 +85,26 @@ class Server
 		void						AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen );
 		void						BroadcastMessage(std:: string &messasge);
 		void						SendToClient(Client& client, const std::string& message);
-		void						SendToChannel(const std::string& channelName, const std::string& message, Client* sender, bool justJoined);
+		void						SendToChannel(const std::string& channelName, const std::string& message, Client* sender, int code);
 		void						handleMessage(Client& client, const std::string& message);
 		int							connectionHandshake(Client& client, std::vector<std::string> messages);
 		void						ModeHelperChannel(Client &client, std::map<std::string, Channel>::iterator it, char mode, bool adding, std::string code);
 
 		// Command handlers
-		void Ping(Client& client, const std::string& message);
-		void Pong(Client& client, const std::string& message);
-		void Cap(Client& client, const std::string& message);
-		void Nick(Client& client, const std::string& message);
-		void User(Client& client, const std::string& message);
-		void Mode(Client& client, const std::string& message);
-		void Join(Client& client, const std::string& message);
-		void Quit(Client& client, const std::string& message);
-		void Priv(Client& client, const std::string& message);
-		int  Pass(Client& client, const std::string& message);
-		void Stats(Client& client, const std::string& message);
-		void Whois(Client& client, const std::string& message);
-    	void Part(Client& client, const std::string& message);
-		void Topic(Client& client, const std::string& message);
+		void 						Ping(Client& client, const std::string& message);
+		void 						Pong(Client& client, const std::string& message);
+		void 						Cap(Client& client, const std::string& message);
+		void 						Nick(Client& client, const std::string& message);
+		void 						User(Client& client, const std::string& message);
+		void 						Mode(Client& client, const std::string& message);
+		void 						Join(Client& client, const std::string& message);
+		void 						Quit(Client& client, const std::string& message);
+		void 						Priv(Client& client, const std::string& message);
+		int  						Pass(Client& client, const std::string& message);
+		void 						Stats(Client& client, const std::string& message);
+		void 						Whois(Client& client, const std::string& message);
+    	void 						Part(Client& client, const std::string& message);
+		void 						Topic(Client& client, const std::string& message);
 
 
 		void 						initializeCommandHandlers();
