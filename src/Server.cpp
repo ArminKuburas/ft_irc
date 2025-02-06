@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/06 11:13:52 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/06 11:25:33 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -426,9 +426,9 @@ void Server::Nick(Client& client, const std::string& message)
 		return;
 	}
 
-	// Check if nickname is already in use
+	// Check if nickname is already in use. Server name cannot be used
 	for (const auto& existingClient : _clients) {
-		if (existingClient.getNick() == newNickname) {
+		if (existingClient.getNick() == newNickname || newNickname == _name){
 				SendToClient(client, ":" + _name + " 433 * " + newNickname + " :Nickname is already in use\r\n");
 				return;
 			}
