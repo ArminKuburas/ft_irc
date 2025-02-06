@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/06 14:55:02 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/06 15:28:53 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -980,53 +980,39 @@ void Server::SendToChannel(const std::string& channelName, const std::string& me
 
 void Server::Part(Client& client, const std::string& message)
 {
-	std::istringstream stream(message);
-	std::string command, channel;
-	stream >> command >> channel;
+    std::istringstream stream(message);
+    std::string command, channel;
+    stream >> command >> channel;
 
-	if (channel.empty() || channel[0] != '#')
-	{
-		//ERR_BADCHANMASK
-		SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + ": invalid channel syntax name\r\n");
-		return ;
-	}
+    if (channel.empty() || channel[0] != '#')
+    {
+        // ERR_BADCHANMASK
+        SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + " :Invalid channel syntax name\r\n");
+        return;
+    }
+    auto it = _channels.find(channel);
+    if (it == _channels.end())
+    {
+        // ERR_NOSUCHCHANNEL
+        SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channel + " :No such channel\r\n");
+        return;
+    }
 
-	auto it = _channels.find(channel);
-	// we did not find any channel
-	if (it == _channels.end()) 
-	{
-		//ERR_NOSUCHCHANNEL
-		SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channel + ": invalid channel name\r\n");
-		return ;
-	}
-	if (it->second.isOperator(&client))
-	{
-		it->second.removeOperator(&client, nullptr, true);
-		// case for when there are no operators left on the channel but there are still members in there
-		if (it->second.noOperators())
-		{
-			for (Client* member : it->second.getMembers())
-			{
-				if (member->getClientFd() != client.getClientFd())
-				{
-					it->second.addOperator(nullptr, member);
-					break ;
-				}
-			}
-			SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + client.getNick() + " was the last operator and left. First of the list has been made operator" + "\r\n", &client, NORMAL_MSG);
-		}
-	}
-	if (it->second.isMember(&client))
-	{
-		it->second.removeMember(&client);
-		SendToClient(client, ":" + client.getNick() + "!~" +client.getNick() + "@" + client.getHost() + " PART " + channel + "\r\n");
-		//:fdessoy!~fdessoy@87-92-251-103.rev.dnainternet.fi PART #BBQ
-	}
-	else
-		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "cannot part because you are not a member" + "\r\n", &client, JUST_JOINED);
-	if (it->second.isChannelEmpty())
-		_channels.erase(channel);
+    if (!it->second.isMember(&client))
+    {
+        SendToClient(client, ":" + _name + " 442 " + client.getNick() + " " + channel + " :You're not on that channel\r\n");
+        return;
+    }
+    std::string partMessage = ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " PART " + channel + "\r\n";
+    SendToChannel(channel, partMessage, &client, NORMAL_MSG);
+    if (it->second.isOperator(&client))
+        it->second.removeOperator(&client, nullptr, NORMAL_MSG);
+    it->second.removeMember(&client);
+    SendToClient(client, partMessage);
+    if (it->second.isChannelEmpty())
+        _channels.erase(channel);
 }
+
 
 void	Server::Topic(Client& client, const std::string& message)
 {
