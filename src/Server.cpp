@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/06 11:25:33 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/06 12:06:07 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -89,6 +89,24 @@ void	Server::setServerAddr()
 	this->_serverAddr.sin_addr.s_addr = INADDR_ANY;
 }
 
+void Server::cleanupFd(struct pollfd* fds, int& nfds, int index) {
+	// Reset the fd slot that's being removed
+	fds[index].fd = -1;
+	fds[index].events = 0;
+	fds[index].revents = 0;
+
+	// Move last fd to current position only if we're not at the last position
+	if (index < nfds - 1) {
+		fds[index] = fds[nfds - 1];
+	}
+	
+	// Clear the last fd slot
+	fds[nfds - 1].fd = -1;
+	fds[nfds - 1].events = 0;
+	fds[nfds - 1].revents = 0;
+	--nfds;
+}
+
 void	Server::Run()
 {
 	struct pollfd fds[1024];
@@ -153,23 +171,11 @@ void	Server::Run()
 							{
 								if(client.getClientFd() == fds[i].fd){
 									disconnectClient(client, "(Connection error)");
-									// Properly reset the fd slot that's being removed
-									fds[i].fd = -1;
-									fds[i].events = 0;
-									fds[i].revents = 0;
+									cleanupFd(fds, nfds, i);
+									--i;
 									break;
 								}
 							}
-							// Move last fd to current position only if we're not at the last position
-							if (i < nfds - 1) {
-								fds[i] = fds[nfds - 1];
-							}
-							// Clear the last fd slot
-							fds[nfds - 1].fd = -1;
-							fds[nfds - 1].events = 0;
-							fds[nfds - 1].revents = 0;
-							--nfds;
-							--i;
 						}
 						continue;
 					} else if (bytes_read == 0) {
@@ -178,6 +184,8 @@ void	Server::Run()
 						for (auto& client : _clients) {
 							if(client.getClientFd() == fds[i].fd){
 								disconnectClient(client, "(Client closed connection)");
+								cleanupFd(fds, nfds, i);
+								--i;
 								break;
 							}
 						}
@@ -192,7 +200,9 @@ void	Server::Run()
 							int grant_access = connectionHandshake(*client, messages, fds[i].fd); // Pass individual message
 							if (!grant_access) {
 								disconnectClient(*client, "(Invalid Password)");
+								cleanupFd(fds, nfds, i);
 								--i;
+								break;
 							}
 						} else {
 							for(const std::string& message : messages) {
@@ -348,7 +358,7 @@ void Server::SendToClient(Client& client, const std::string& message)
 void Server::disconnectClient(Client& client, const std::string& reason) {
 
 	//broadcast QUIT to the rest of the users
-	std::string quitBroadcast = ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " QUIT :Disconnected: " + reason + "\r\n";
+	std::string quitBroadcast = ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " QUIT :" + reason + "\r\n";
 	for (auto& c : _clients) {
 		if (c.getClientFd() != client.getClientFd()) {
 			SendToClient(c, quitBroadcast);
@@ -361,7 +371,6 @@ void Server::disconnectClient(Client& client, const std::string& reason) {
 	_clients.erase(std::remove_if(_clients.begin(), _clients.end(),
 		[fd = client.getClientFd()](const Client& c) { return c.getClientFd() == fd; }), _clients.end());
 
-	client.setClientFd(-1);
 }
 
 void Server::checkClientTimeouts()
@@ -800,15 +809,16 @@ void Server::Priv(Client& client, const std::string& message)
 
 void Server::Quit(Client& client, const std::string& message)
 {
+	std::istringstream stream(message);
+	std::string command, reason;
+	stream >> command >> reason;
+
 	std::string quitMessage = "Client has disconnected";
-	if (!message.empty())
-	{
-		quitMessage = message;
-		if (quitMessage[0] == ':')
-			quitMessage = quitMessage.substr(1);
-	}
+	if (!reason.empty())
+		quitMessage = reason;
+
 	disconnectClient(client, quitMessage);
-	std::cout << "[Zorg] Client " << client.getNick() << " has disconnected\r\n" << std::endl;;
+	std::cout << "[Zorg] Client " << client.getNick() << " has disconnected" << std::endl;;
 }
 
 void Server::Join(Client& client, const std::string& message)

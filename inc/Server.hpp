@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/04 11:27:53 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 12:20:13 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/06 11:44:51 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,6 +59,7 @@ class Server
 		std::map<std::string, Channel> 			_channels;
 		std::map<std::string, CommandHelper>	_commands;
 		void disconnectClient(Client& client, const std::string& reason);
+		void cleanupFd(struct pollfd* fds, int& nfds, int index);
 		
 	public:
 		// constructor
