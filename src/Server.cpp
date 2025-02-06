@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/06 12:06:07 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/06 12:47:08 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -170,7 +170,7 @@ void	Server::Run()
 							for (auto& client : _clients)
 							{
 								if(client.getClientFd() == fds[i].fd){
-									disconnectClient(client, "(Connection error)");
+									disconnectClient(client, "Connection error");
 									cleanupFd(fds, nfds, i);
 									--i;
 									break;
@@ -183,7 +183,7 @@ void	Server::Run()
 						std::cout << "[Zorg] Client closed connection: " << fds[i].fd << std::endl;
 						for (auto& client : _clients) {
 							if(client.getClientFd() == fds[i].fd){
-								disconnectClient(client, "(Client closed connection)");
+								disconnectClient(client, "Client closed connection");
 								cleanupFd(fds, nfds, i);
 								--i;
 								break;
@@ -199,7 +199,7 @@ void	Server::Run()
 						if (!client->getRegistration()) {
 							int grant_access = connectionHandshake(*client, messages, fds[i].fd); // Pass individual message
 							if (!grant_access) {
-								disconnectClient(*client, "(Invalid Password)");
+								disconnectClient(*client, "Invalid Password");
 								cleanupFd(fds, nfds, i);
 								--i;
 								break;
@@ -386,7 +386,7 @@ void Server::checkClientTimeouts()
 			// If client hasn't responded to PING within 10 seconds
 			if ((currentTime - client.getPingTime()) > pingTimeout)
 			{
-				disconnectClient(client, "(Inactivity timeout)");
+				disconnectClient(client, "Inactivity timeout");
 				continue;
 			}
 		}
@@ -815,8 +815,11 @@ void Server::Quit(Client& client, const std::string& message)
 
 	std::string quitMessage = "Client has disconnected";
 	if (!reason.empty())
+	{
 		quitMessage = reason;
-
+		if (quitMessage[0] == ':')
+			quitMessage = quitMessage.substr(1);
+	}
 	disconnectClient(client, quitMessage);
 	std::cout << "[Zorg] Client " << client.getNick() << " has disconnected" << std::endl;;
 }
