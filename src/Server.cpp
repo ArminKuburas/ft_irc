@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/06 13:18:10 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/06 13:37:18 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -898,27 +898,25 @@ void Server::Part(Client& client, const std::string& message)
 	}
 	if (it->second.isOperator(&client))
 	{
+		it->second.removeOperator(&client, nullptr, true);
 		// case for when there are no operators left on the channel but there are still members in there
-		if (it->second.removeOperator(&client, nullptr, true))
+		if (it->second.noOperators())
 		{
-			if (it->second.noOperators())
+			for (Client* member : it->second.getMembers())
 			{
-				for (Client* member : it->second.getMembers())
+				if (member->getClientFd() != client.getClientFd())
 				{
-					if (member->getClientFd() != client.getClientFd())
-					{
-						it->second.addOperator(nullptr, member);
-						break ;
-					}
+					it->second.addOperator(nullptr, member);
+					break ;
 				}
-				SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + client.getNick() + " was the last operator and left. First of the list has been made operator" + "\r\n", &client, NORMAL_MSG);
 			}
+			SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + client.getNick() + " was the last operator and left. First of the list has been made operator" + "\r\n", &client, NORMAL_MSG);
 		}
 	}
 	if (it->second.isMember(&client))
 	{
-		if (it->second.removeMember(&client))
-			SendToClient(client, ":" + client.getNick() + "!~" +client.getNick() + "@" + client.getHost() + " PART " + channel + "\r\n");
+		it->second.removeMember(&client);
+		SendToClient(client, ":" + client.getNick() + "!~" +client.getNick() + "@" + client.getHost() + " PART " + channel + "\r\n");
 		//:fdessoy!~fdessoy@87-92-251-103.rev.dnainternet.fi PART #BBQ
 	}
 	else
