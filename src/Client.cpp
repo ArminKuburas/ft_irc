@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 19:54:43 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/06 14:54:37 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -146,4 +146,26 @@ std::string Client::getModes() const
 
 const std::string Client::getHost () const{
 	return this->_clientHost;
+}
+
+time_t Client::getLastActivity() const{
+	return (_lastActivity);
+}
+
+void Client::setLastActivity(){
+	_lastActivity = std::time(nullptr);
+}
+
+void Client::setPingStatus(bool awaiting){
+	_awaitingPong = awaiting;
+	if(awaiting)
+		_pingTime = time(NULL);
+}
+
+bool Client::getAwaitingPong() const {
+	return _awaitingPong;
+}
+
+time_t Client::getPingTime() const{
+	return _pingTime;
 }
