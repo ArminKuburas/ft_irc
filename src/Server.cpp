@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/06 10:04:03 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/06 11:13:52 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -346,7 +346,16 @@ void Server::SendToClient(Client& client, const std::string& message)
 }
 
 void Server::disconnectClient(Client& client, const std::string& reason) {
-	SendToClient(client, "ERROR :Closing Link: " + client.getNick() + " " + reason + "\r\n");
+
+	//broadcast QUIT to the rest of the users
+	std::string quitBroadcast = ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " QUIT :Disconnected: " + reason + "\r\n";
+	for (auto& c : _clients) {
+		if (c.getClientFd() != client.getClientFd()) {
+			SendToClient(c, quitBroadcast);
+		}
+	}
+
+	SendToClient(client, ":" + _name + " ERROR :Closing Link: " + client.getNick() + " " + reason + "\r\n");
 	shutdown(client.getClientFd(), SHUT_WR);
 	close(client.getClientFd());
 	_clients.erase(std::remove_if(_clients.begin(), _clients.end(),
@@ -791,19 +800,14 @@ void Server::Priv(Client& client, const std::string& message)
 
 void Server::Quit(Client& client, const std::string& message)
 {
-	std::string quitMessage = "[Zorg] Client has disconnected";
+	std::string quitMessage = "Client has disconnected";
 	if (!message.empty())
 	{
 		quitMessage = message;
 		if (quitMessage[0] == ':')
 			quitMessage = quitMessage.substr(1);
 	}
-	std::string quitBroadcast = ":" + client.getNick() + " QUIT :" + quitMessage + "\r\n";
-	for (auto& c : _clients)
-	{
-		if (c.getNick() != client.getNick())
-			SendToClient(c, quitBroadcast);
-	}
+	disconnectClient(client, quitMessage);
 	std::cout << "[Zorg] Client " << client.getNick() << " has disconnected\r\n" << std::endl;;
 }
 
