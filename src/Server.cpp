@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/06 15:28:53 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/06 21:32:54 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -847,6 +847,8 @@ void Server::Quit(Client& client, const std::string& message)
 
 void Server::Join(Client& client, const std::string& message)
 {
+	std::map<std::string, std::string>allChannels = MapChannels(message);
+	
 	std::istringstream stream(message);
 	std::string command, channel, key;
 	stream >> command >> channel >> key;
@@ -978,41 +980,83 @@ void Server::SendToChannel(const std::string& channelName, const std::string& me
 	}
 }
 
+
 void Server::Part(Client& client, const std::string& message)
 {
-    std::istringstream stream(message);
-    std::string command, channel;
-    stream >> command >> channel;
+	std::map<std::string, std::string>allChannels = MapChannels(message);
 
-    if (channel.empty() || channel[0] != '#')
-    {
-        // ERR_BADCHANMASK
-        SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + " :Invalid channel syntax name\r\n");
-        return;
-    }
-    auto it = _channels.find(channel);
-    if (it == _channels.end())
-    {
-        // ERR_NOSUCHCHANNEL
-        SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channel + " :No such channel\r\n");
-        return;
-    }
+	// need to make multiple parts inside this whole thing
+    	std::istringstream stream(message);
+    	std::string command, channel;
+    	stream >> command >> channel;
+		if (channel.empty() || channel[0] != '#')
+		{
+			// ERR_BADCHANMASK
+			SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + " :Invalid channel syntax name\r\n");
+			return;
+		}
+		auto it = _channels.find(channel);
+		if (it == _channels.end())
+		{
+			// ERR_NOSUCHCHANNEL
+			SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channel + " :No such channel\r\n");
+			return;
+		}
 
-    if (!it->second.isMember(&client))
-    {
-        SendToClient(client, ":" + _name + " 442 " + client.getNick() + " " + channel + " :You're not on that channel\r\n");
-        return;
-    }
-    std::string partMessage = ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " PART " + channel + "\r\n";
-    SendToChannel(channel, partMessage, &client, NORMAL_MSG);
-    if (it->second.isOperator(&client))
-        it->second.removeOperator(&client, nullptr, NORMAL_MSG);
-    it->second.removeMember(&client);
-    SendToClient(client, partMessage);
-    if (it->second.isChannelEmpty())
-        _channels.erase(channel);
+		if (!it->second.isMember(&client))
+		{
+			SendToClient(client, ":" + _name + " 442 " + client.getNick() + " " + channel + " :You're not on that channel\r\n");
+			return;
+		}
+		std::string partMessage = ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " PART " + channel + "\r\n";
+		SendToChannel(channel, partMessage, &client, NORMAL_MSG);
+		if (it->second.isOperator(&client))
+			it->second.removeOperator(&client, nullptr, NORMAL_MSG);
+		it->second.removeMember(&client);
+		SendToClient(client, partMessage);
+		if (it->second.isChannelEmpty())
+			_channels.erase(channel);
+	}
 }
 
+std::map<std::string, std::string>	Server::MapChannels( const std::string& message )
+{
+	std::istringstream 					stream(message);
+	std::vector<std::string> 			channels;
+	std::vector<std::string> 			keys;
+	std::map<std::string, std::string>	channelMap;
+	bool								parsingKeys = false;
+	std::string							token;
+
+	if (!(stream >> token) || token != "/PART")
+	{
+		std::cerr << "Error" << std::endl;
+		return ;
+	}
+
+	while (stream >> token)
+	{
+		if (!parsingKeys)
+		{
+			if (token[0] == '#')
+				channels.push_back(token);
+			else 
+			{
+				parsingKeys = true;
+				keys.push_back(token);
+			}
+		}
+		else
+			keys.push_back(token);
+	}
+
+	for (size_t i = 0; i < channels.size(); ++i)
+	{
+		std::string respectiveKey = (i < keys.size()) ? keys[i] : "";
+		channelMap[channels[i]] = respectiveKey;
+	}
+	return (channelMap);
+}
 
 void	Server::Topic(Client& client, const std::string& message)
 {
