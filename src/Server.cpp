@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 13:01:32 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/06 10:04:03 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -145,30 +145,42 @@ void	Server::Run()
 					// Handling data on established client connections
                     char buffer[1024];
                     ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer) - 1);
-					//std::cout << "Number of bytes read: " << bytes_read << std::endl;
-                    if (bytes_read <= 0) {
-                        std::cout << "[Zorg] Disconnecting client: " << fds[i].fd << std::endl;
-						for (auto& client : _clients)
-						{
+					 // Only disconnect on actual read errors
+                    if (bytes_read < 0) {
+						if (errno != EAGAIN && errno != EWOULDBLOCK) {
+							std::cout << "[Zorg] Disconnecting client: " << fds[i].fd << std::endl;
+							for (auto& client : _clients)
+							{
+								if(client.getClientFd() == fds[i].fd){
+									disconnectClient(client, "(Connection error)");
+									// Properly reset the fd slot that's being removed
+									fds[i].fd = -1;
+									fds[i].events = 0;
+									fds[i].revents = 0;
+									break;
+								}
+							}
+							// Move last fd to current position only if we're not at the last position
+							if (i < nfds - 1) {
+								fds[i] = fds[nfds - 1];
+							}
+							// Clear the last fd slot
+							fds[nfds - 1].fd = -1;
+							fds[nfds - 1].events = 0;
+							fds[nfds - 1].revents = 0;
+							--nfds;
+							--i;
+						}
+						continue;
+					} else if (bytes_read == 0) {
+						// Client closed connection
+						std::cout << "[Zorg] Client closed connection: " << fds[i].fd << std::endl;
+						for (auto& client : _clients) {
 							if(client.getClientFd() == fds[i].fd){
-								disconnectClient(client, "(Client Quit)");
-								// Properly reset the fd slot that's being removed
-								fds[i].fd = -1;
-								fds[i].events = 0;
-								fds[i].revents = 0;
+								disconnectClient(client, "(Client closed connection)");
 								break;
 							}
 						}
-						// Move last fd to current position only if we're not at the last position
-						if (i < nfds - 1) {
-							fds[i] = fds[nfds - 1];
-						}
-						// Clear the last fd slot
-						fds[nfds - 1].fd = -1;
-						fds[nfds - 1].events = 0;
-						fds[nfds - 1].revents = 0;
-						--nfds;
-						--i;
 					} else {
 						buffer[bytes_read] = '\0';
 						std::string receivedData(buffer);
