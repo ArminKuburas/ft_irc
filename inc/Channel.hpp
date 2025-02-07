@@ -3,18 +3,15 @@
 /*                                                        :::      ::::::::   */
 /*   Channel.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/18 11:18:19 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 10:02:00 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/07 12:17:17 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include <iostream>
-#include <vector>
-#include <string>
 #include <set>
 #include <cstdint>
 #include "Client.hpp"
@@ -74,7 +71,7 @@ class Channel
 		void					addMember(Client* client);
 		bool					removeMember(Client* client);
 		bool					addOperator(Client* channelOperator, Client* target);
-		bool					removeOperator(Client* channelOperator, Client* target, bool leaving);
+		bool					removeOperator(Client* channelOperator, Client* target);
 		bool					changeKey(Client* channelOperator, std::string newKey);
 		void 					limitMaxMembers( uint64_t limit );
 		

@@ -191,9 +191,9 @@ bool Channel::addOperator(Client* channelOperator, Client* target)
 	return (true);
 }
 
-bool	Channel::removeOperator(Client* channelOperator, Client* target, bool leaving)
+bool	Channel::removeOperator(Client* channelOperator, Client* target)
 {
-	if (leaving)
+	if (target == nullptr)
 	{
 		if (!this->isOperator(channelOperator) || !this->isMember(channelOperator))
 			return (false);
