@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/07 12:16:00 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/07 12:24:04 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1242,4 +1242,43 @@ void Server::Who(Client& client, const std::string& message)
 	{
 		SendToClient(client, ":" + _name + " 315 " + client.getNick() + " :End of /WHO list\r\n");
 	}
+}
+
+std::map<std::string, std::string>	Server::MapChannels( const std::string& message )
+{
+	std::istringstream 					stream(message);
+	std::vector<std::string> 			channels;
+	std::vector<std::string> 			keys;
+	std::map<std::string, std::string>	channelMap;
+	bool								parsingKeys = false;
+	std::string							token;
+
+	if (!(stream >> token) || token != "/PART")
+	{
+		std::cerr << "Error" << std::endl;
+		return {};
+	}
+
+	while (stream >> token)
+	{
+		if (!parsingKeys)
+		{
+			if (token[0] == '#')
+				channels.push_back(token);
+			else 
+			{
+				parsingKeys = true;
+				keys.push_back(token);
+			}
+		}
+		else
+			keys.push_back(token);
+	}
+
+	for (size_t i = 0; i < channels.size(); ++i)
+	{
+		std::string respectiveKey = (i < keys.size()) ? keys[i] : "";
+		channelMap[channels[i]] = respectiveKey;
+	}
+	return (channelMap);
 }
