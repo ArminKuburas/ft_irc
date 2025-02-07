@@ -3,18 +3,15 @@
 /*                                                        :::      ::::::::   */
 /*   Channel.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/18 11:18:19 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 10:02:00 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/07 09:57:28 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include <iostream>
-#include <vector>
-#include <string>
 #include <set>
 #include <cstdint>
 #include "Client.hpp"
