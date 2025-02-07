@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/07 11:00:21 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/07 12:02:24 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,6 +46,7 @@ void Server::initializeCommandHandlers()
 	_commands["TOPIC"] = [this](Client& client, const std::string& message) 	{ Topic(client, message); };
 	_commands["INVITE"] = [this](Client& client, const std::string& message) 	{ Invite(client, message); };
 	_commands["KICK"] = [this](Client& client, const std::string& message) 		{ Kick(client, message); };
+	_commands["WHO"] = [this](Client& client, const std::string& message) 		{ Who(client, message); };
 }
 
 Server::~Server()
@@ -1057,5 +1058,38 @@ void Server::Kick(Client& client, const std::string& message)
 				}
 			}
 		}
+	}
+}
+
+void Server::Who(Client& client, const std::string& message)
+{
+	std::istringstream stream(message);
+	std::string command, mask;
+	stream >> command >> mask;
+	if (mask.empty())
+	{
+		SendToClient(client, ":" + _name + " 315 " + client.getNick() + " :End of /WHO list\r\n");
+		return;
+	}
+	if (mask[0] == '#')
+	{
+		auto it = _channels.find(mask);
+		if (it == _channels.end())
+		{
+			SendToClient(client, ":" + _name + " 315 " + client.getNick() + " :End of /WHO list\r\n");
+			return;
+		}
+		Channel& channel = it->second;
+		for (Client* member : channel.getMembers())
+		{
+			std::string status = channel.isOperator(member) ? "H@" : "H";
+			std::string response = ":" + _name + " 352 " + client.getNick() + " " + mask + " " + member->getUser() + " " + member->getHost() + " " + _name + " " + member->getNick() + " " + status + " :0 " + member->getRealname() + "\r\n";
+			SendToClient(client, response);
+		}
+		SendToClient(client, ":" + _name + " 315 " + client.getNick() + " :End of /WHO list\r\n");
+	}
+	else
+	{
+		SendToClient(client, ":" + _name + " 315 " + client.getNick() + " :End of /WHO list\r\n");
 	}
 }

@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/04 11:27:53 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 12:50:07 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/07 11:42:34 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -104,6 +104,7 @@ class Server
 		void Topic(Client& client, const std::string& message);
 		void Invite(Client& client, const std::string& message);
 		void Kick(Client& client, const std::string& message);
+		void Who(Client& client, const std::string& message);
 
 
 		void 						initializeCommandHandlers();
