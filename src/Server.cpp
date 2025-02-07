@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/07 12:14:25 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/07 12:17:38 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -693,7 +693,7 @@ void Server::Mode(Client& client, const std::string& message)
 						Client* possibleOperator = it->second.retrieveClient(targetUser);
 						if (possibleOperator != nullptr)
 						{
-							it->second.removeOperator(&client, possibleOperator, false);
+							it->second.removeOperator(&client, possibleOperator);
 							SendToChannel(it->second.getName(), messageSyntax + " " + targetUser + "\r\n", &client, UNIVERSAL_MSG);
 						}
 						else
@@ -947,7 +947,7 @@ void Server::Part(Client& client, const std::string& message)
 		std::string partSyntax = ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " PART " + channel + "\r\n";
 		SendToChannel(channel, partSyntax, &client, NORMAL_MSG);
 		if (it->second.isOperator(&client))
-			it->second.removeOperator(&client, nullptr, true);
+			it->second.removeOperator(&client, nullptr);
 		it->second.removeMember(&client);
 		SendToClient(client, partSyntax);
 		if (it->second.isChannelEmpty())

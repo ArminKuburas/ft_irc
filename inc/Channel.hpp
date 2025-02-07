@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/18 11:18:19 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/07 09:57:28 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/07 12:17:17 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,7 +71,7 @@ class Channel
 		void					addMember(Client* client);
 		bool					removeMember(Client* client);
 		bool					addOperator(Client* channelOperator, Client* target);
-		bool					removeOperator(Client* channelOperator, Client* target, bool leaving);
+		bool					removeOperator(Client* channelOperator, Client* target);
 		bool					changeKey(Client* channelOperator, std::string newKey);
 		void 					limitMaxMembers( uint64_t limit );
 		
