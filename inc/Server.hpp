@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/04 11:27:53 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/04 11:27:54 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/06 11:44:51 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@
 #include <functional>
 #include <map>
 #include <sstream>
+#include <ctime>
 #include "Channel.hpp"
 
 #define SERVER_NAME "Zorg"
@@ -57,7 +58,8 @@ class Server
 		std::vector<Client>						_clients;
 		std::map<std::string, Channel> 			_channels;
 		std::map<std::string, CommandHelper>	_commands;
-		void disconnectClient(Client& client);
+		void disconnectClient(Client& client, const std::string& reason);
+		void cleanupFd(struct pollfd* fds, int& nfds, int index);
 		
 	public:
 		// constructor
@@ -84,7 +86,7 @@ class Server
 		void						SendToClient(Client& client, const std::string& message);
 		void						SendToChannel(const std::string& channelName, const std::string& message, Client* sender, bool justJoined);
 		void						handleMessage(Client& client, const std::string& message);
-		int							connectionHandshake(Client& client, std::vector<std::string> messages);
+		int							connectionHandshake(Client& client, std::vector<std::string> messages, int fd);
 		void						ModeHelperChannel(Client &client, std::map<std::string, Channel>::iterator it, char mode, bool adding, std::string code);
 
 		// Command handlers
@@ -106,6 +108,7 @@ class Server
 
 		void 						initializeCommandHandlers();
 		std::vector<std::string>	splitMessages(const std::string& message);
+		void checkClientTimeouts();
 
 
 };
