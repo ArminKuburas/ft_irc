@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/09 11:43:25 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/09 11:44:34 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,16 +110,16 @@ void Server::cleanupFd(struct pollfd* fds, int& nfds, int index) {
 	--nfds;
 }
 
-void debugPrintBytes(const char* buffer, ssize_t bytes_read) {
-    std::cout << "Received " << bytes_read << " bytes: ";
-    for (ssize_t i = 0; i < bytes_read; i++) {
-        unsigned char c = buffer[i];
-        if (c == '\r') std::cout << "\\r";
-        else if (c == '\n') std::cout << "\\n";
-        else std::cout << c;
-    }
-    std::cout << std::endl;
-}
+// void debugPrintBytes(const char* buffer, ssize_t bytes_read) {
+//     std::cout << "Received " << bytes_read << " bytes: ";
+//     for (ssize_t i = 0; i < bytes_read; i++) {
+//         unsigned char c = buffer[i];
+//         if (c == '\r') std::cout << "\\r";
+//         else if (c == '\n') std::cout << "\\n";
+//         else std::cout << c;
+//     }
+//     std::cout << std::endl;
+// }
 
 void	Server::Run()
 {
@@ -206,12 +206,13 @@ void	Server::Run()
 					} else {
 						buffer[bytes_read] = '\0';
 						std::string receivedData(buffer);
-						debugPrintBytes(buffer, bytes_read);
+						//debugPrintBytes(buffer, bytes_read);
 						// Identify which client sent the message using the fd
 
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
 						// Append new data to client's buffer
 						client->appendBuffer(buffer, bytes_read);
+						client->setLastActivity();
 
 						// Only process if we have a complete message
 						if (client->hasCompleteMessage()) {
@@ -245,7 +246,6 @@ int Server::connectionHandshake(Client& client, std::vector<std::string> message
 	if (messages.empty()) {
 		return 1;
 	}
-	client.setLastActivity();
 
 	std::cout << "[Zorg] Connection Handshake for Client: " << fd << std::endl;
 	for(const std::string& message : messages) {
@@ -491,13 +491,17 @@ void Server::User(Client& client, const std::string& message)
 
 	stream >> command >> username >> hostname >> servername;
 	getline(stream, realname);
-	if(!realname.empty() && realname[0] == ' ')
-		realname = realname.substr(2);
-	if (username.empty())
-	{
+	if (username.empty() || hostname.empty() || servername.empty() || realname.empty()) {
 		SendToClient(client, ":" + _name + " 461 "+ client.getNick() + "USER :Not enough parameters\r\n");
 		return;
 	}
+
+	// Remove leading space and colon from realname if present
+	if(!realname.empty() && realname[0] == ' ')
+		realname = realname.substr(1);
+	if(!realname.empty() && realname[0] == ':')
+		realname = realname.substr(1);
+
 	client.setUser(username);
 	client.setRealname(realname);
 }
@@ -547,7 +551,7 @@ void Server::Ping(Client& client, const std::string& message)
 	// If target is the server name, respond with PONG
 	if (target == _name)
 	{
-		SendToClient(client, "PONG :"+ target + "\r\n");
+		SendToClient(client, "PONG "+ target + "\r\n");
 	}
 	else
 	{
