@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/07 12:06:04 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/07 12:14:25 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -551,10 +551,7 @@ void Server::Mode(Client& client, const std::string& message)
 
 	// check if target is either user or channel
 	if (modeChanges.empty() || target.empty())
-	{
-		SendToClient(client, ":" + _name + " 221 " + "RPL_UMODEIS " + client.getModes() + "\r\n");
 		return ;
-	}
 	if (target[0] == '#') // checking for channel
 	{
 		for (auto it = _channels.begin(); it != _channels.end(); ++it)
