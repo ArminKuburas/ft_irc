@@ -6,7 +6,7 @@
 /*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/07 13:38:20 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/07 14:08:12 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -550,7 +550,6 @@ void Server::Mode(Client& client, const std::string& message)
 	stream >> command >> target >> modeChanges >> targetUser;
 	bool channel = false;
 	bool user = false;
-	
 
 	// check if target is either user or channel
 	if (modeChanges.empty() || target.empty())
@@ -559,8 +558,6 @@ void Server::Mode(Client& client, const std::string& message)
 	{
 		for (auto it = _channels.begin(); it != _channels.end(); ++it)
 		{
-			std::cout << "Target is: " << target << std::endl;
-			std::cout << "Our channel map match: " << it->first << std::endl;
 			if (it->first == target)
 			{
 				channel = true;
@@ -678,6 +675,8 @@ void Server::Mode(Client& client, const std::string& message)
 					if (it->second.isOperator(&client) && it->second.isMember(&client) && !targetUser.empty())
 					{
 						Client* newOperator = it->second.retrieveClient(targetUser);
+						if (it->second.isOperator(newOperator))
+							return ;
 						if (newOperator != nullptr)
 						{
 							it->second.addOperator(&client, newOperator);
@@ -853,70 +852,72 @@ void Server::Quit(Client& client, const std::string& message)
 void Server::Join(Client& client, const std::string& message)
 {
 	std::map<std::string, std::string>allChannels = MapChannels(message);
-	
-	std::istringstream stream(message);
-	std::string command, channel, key;
-	stream >> command >> channel >> key;
-	
-	if (channel.empty() || channel[0] != '#')
-	{
-		// ERR_BADCHANMASK
-		SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + ":invalid channel name" + "\r\n");
+	if (allChannels.empty())
 		return ;
-	}
 
-	auto it = _channels.find(channel);
-	if (it == _channels.end()) 
+	for (auto it_map = allChannels.begin();it_map != allChannels.end(); ++it_map)
 	{
-		Channel newChannel(channel, key, "", false, false);
-		_channels.emplace(channel, newChannel);
-		it = _channels.find(channel);
-	}
-
-	// check if priovided key matches
-    if (!it->second.getKey().empty() && it->second.getKey() != key)
-    {
-        SendToClient(client, ":" + _name + " 475 " + client.getNick() + " " + channel + " :bad channel key\r\n");
-        return ;
-    }
-
-	// check if server has imposed limit
-	if (it->second.getMaxMembers())
-	{
-		// check if there is space
-		if (it->second.getNbMembers() >= it->second.getNumberMaxMembers())
+		std::string channel = it_map->first;
+		std::string key = it_map->second;
+		if (channel.empty() || channel[0] != '#')
 		{
-			SendToClient(client, ":" + _name + " 471 " + client.getNick() + " " + channel + " :channel is full\r\n");
-			return ;
+			// ERR_BADCHANMASK
+			SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + ":invalid channel name" + "\r\n");
+			continue ;
 		}
-	}
 
-	it->second.addMember(&client);
-	if (it->second.isMember(&client))
-	{
-		SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
-		std::string namesList;
-		for (Client* member : it->second.getMembers())
+		// We look for existing channel, and if it does not exist, we create it
+		auto [it, inserted] = _channels.try_emplace(channel, Channel(channel, key, "", false, false));
+	
+		// check if priovided key matches
+    	if (!it->second.getKey().empty() && it->second.getKey() != key)
+    	{
+    	    SendToClient(client, ":" + _name + " 475 " + client.getNick() + " " + channel + " :bad channel key\r\n");
+    	    continue ;
+    	}
+	
+		// check if server has imposed limit
+		if (it->second.getMaxMembers())
 		{
-			if (it->second.isOperator(member))
-				namesList += "@" + member->getNick() + " ";
+			// check if there is space
+			if (it->second.getNbMembers() >= it->second.getNumberMaxMembers())
+			{
+				SendToClient(client, ":" + _name + " 471 " + client.getNick() + " " + channel + " :channel is full\r\n");
+				continue ;
+			}
+		}
+
+		// avoid double join
+		if (it->second.isMember(&client))
+			continue ;
+
+		it->second.addMember(&client);
+		if (it->second.isMember(&client))
+		{
+			SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
+			std::string namesList;
+			for (Client* member : it->second.getMembers())
+			{
+				if (it->second.isOperator(member))
+					namesList += "@" + member->getNick() + " ";
+				else
+					namesList += member->getNick() + " ";
+			}
+			SendToClient(client, ":" + _name + " 353 " + client.getNick() + " = " + channel + " :" + namesList + "\r\n");
+			SendToClient(client, ":" + _name + " 366 " + client.getNick() + " " + channel + " :End of /NAMES list.\r\n");
+			if (!it->second.getTopic().empty())
+			{
+				SendToClient(client, ":" + _name + " 332 " + client.getNick() + " " + channel + " :" + it->second.getTopic() + "\r\n");
+				
+				SendToClient(client, ":" + _name + " 333 " + client.getNick() + " " + channel + " " + it->second.getSetter() + " " + std::to_string(it->second.getTopicTime()) + "\r\n");
+			}
 			else
-				namesList += member->getNick() + " ";
+			{
+				SendToClient(client, ":" + _name + " 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
+			}
+			SendToChannel(it->second.getName(), ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " JOIN " + it->second.getName() + "\r\n", &client, NORMAL_MSG); // why does this crap is persisting?
+			//:fdessoy!~fdessoy@87-92-251-103.rev.dnainternet.fi JOIN #SUPER_BBQ
 		}
-		SendToClient(client, ":" + _name + " 353 " + client.getNick() + " = " + channel + " :" + namesList + "\r\n");
-		SendToClient(client, ":" + _name + " 366 " + client.getNick() + " " + channel + " :End of /NAMES list.\r\n");
-		if (!it->second.getTopic().empty())
-		{
-			SendToClient(client, ":" + _name + " 332 " + client.getNick() + " " + channel + " :" + it->second.getTopic() + "\r\n");
-			
-			SendToClient(client, ":" + _name + " 333 " + client.getNick() + " " + channel + " " + it->second.getSetter() + " " + std::to_string(it->second.getTopicTime()) + "\r\n");
-		}
-		else
-		{
-			SendToClient(client, ":" + _name + " 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
-		}
-		SendToChannel(it->second.getName(), ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " JOIN " + it->second.getName() + "\r\n", &client, NORMAL_MSG); // why does this crap is persisting?
-		//:fdessoy!~fdessoy@87-92-251-103.rev.dnainternet.fi JOIN #SUPER_BBQ
 	}
 }
 
@@ -985,82 +986,46 @@ void Server::SendToChannel(const std::string& channelName, const std::string& me
 	}
 }
 
-
 void Server::Part(Client& client, const std::string& message)
 {
 	std::map<std::string, std::string>allChannels = MapChannels(message);
+	if (allChannels.empty())
+		return ;
 
-	// need to make multiple parts inside this whole thing
-    	std::istringstream stream(message);
-    	std::string command, channel;
-    	stream >> command >> channel;
+	for (auto it_map = allChannels.begin(); it_map != allChannels.end(); ++it_map)
+	{
+		std::string channel = it_map->first;
+		std::string key = it_map->second;
+
 		if (channel.empty() || channel[0] != '#')
 		{
 			// ERR_BADCHANMASK
 			SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + " :Invalid channel syntax name\r\n");
-			return;
+			continue ;
 		}
+
 		auto it = _channels.find(channel);
 		if (it == _channels.end())
 		{
 			// ERR_NOSUCHCHANNEL
 			SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channel + " :No such channel\r\n");
-			return;
+			continue ;
 		}
 
 		if (!it->second.isMember(&client))
 		{
 			SendToClient(client, ":" + _name + " 442 " + client.getNick() + " " + channel + " :You're not on that channel\r\n");
-			return;
+			continue ;
 		}
-		std::string partMessage = ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " PART " + channel + "\r\n";
-		SendToChannel(channel, partMessage, &client, NORMAL_MSG);
+		std::string partSyntax = ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " PART " + channel + "\r\n";
+		SendToChannel(channel, partSyntax, &client, NORMAL_MSG);
 		if (it->second.isOperator(&client))
-			it->second.removeOperator(&client, nullptr, NORMAL_MSG);
+			it->second.removeOperator(&client, nullptr);
 		it->second.removeMember(&client);
-		SendToClient(client, partMessage);
+		SendToClient(client, partSyntax);
 		if (it->second.isChannelEmpty())
 			_channels.erase(channel);
 	}
-}
-
-std::map<std::string, std::string>	Server::MapChannels( const std::string& message )
-{
-	std::istringstream 					stream(message);
-	std::vector<std::string> 			channels;
-	std::vector<std::string> 			keys;
-	std::map<std::string, std::string>	channelMap;
-	bool								parsingKeys = false;
-	std::string							token;
-
-	if (!(stream >> token) || token != "/PART")
-	{
-		std::cerr << "Error" << std::endl;
-		return ;
-	}
-
-	while (stream >> token)
-	{
-		if (!parsingKeys)
-		{
-			if (token[0] == '#')
-				channels.push_back(token);
-			else 
-			{
-				parsingKeys = true;
-				keys.push_back(token);
-			}
-		}
-		else
-			keys.push_back(token);
-	}
-
-	for (size_t i = 0; i < channels.size(); ++i)
-	{
-		std::string respectiveKey = (i < keys.size()) ? keys[i] : "";
-		channelMap[channels[i]] = respectiveKey;
-	}
-	return (channelMap);
 }
 
 void	Server::Topic(Client& client, const std::string& message)
@@ -1229,7 +1194,7 @@ void Server::Kick(Client& client, const std::string& message)
 		SendToClient(target, KickMessage);
 		channel.removeMember(&target);
 		if (channel.isOperator(&target)) {
-			channel.removeOperator(&target, nullptr, true);
+			channel.removeOperator(&target, nullptr);
 			if (channel.noOperators())
 			{
 				for (Client* member : channel.getMembers())
@@ -1281,33 +1246,29 @@ void Server::Who(Client& client, const std::string& message)
 std::map<std::string, std::string>	Server::MapChannels( const std::string& message )
 {
 	std::istringstream 					stream(message);
-	std::vector<std::string> 			channels;
-	std::vector<std::string> 			keys;
 	std::map<std::string, std::string>	channelMap;
-	bool								parsingKeys = false;
-	std::string							token;
+	std::string command,channelsList,keysList;
 
-	if (!(stream >> token) || token != "/PART")
-	{
-		std::cerr << "Error" << std::endl;
+	// this will never happen, but might as well check
+    if (!(stream >> command) || (command != "PART" && command != "JOIN"))
 		return {};
-	}
 
-	while (stream >> token)
-	{
-		if (!parsingKeys)
-		{
-			if (token[0] == '#')
-				channels.push_back(token);
-			else 
-			{
-				parsingKeys = true;
-				keys.push_back(token);
-			}
-		}
-		else
-			keys.push_back(token);
-	}
+    if (!(stream >> channelsList))
+		return {};
+
+    std::getline(stream, keysList);
+	if (!keysList.empty() && keysList[0] == ' ')
+		keysList.erase(0, 1);
+
+	std::vector<std::string> channels, keys;
+	std::stringstream chStream(channelsList), keyStream(keysList);
+
+	std::string token;
+	while (std::getline(chStream, token, ','))
+		channels.push_back(token);
+
+	while (std::getline(keyStream, token, ','))
+		keys.push_back(token);
 
 	for (size_t i = 0; i < channels.size(); ++i)
 	{
