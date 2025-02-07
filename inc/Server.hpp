@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/04 11:27:53 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/07 13:38:40 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/09 11:49:52 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -62,8 +62,9 @@ class Server
 		std::vector<Client>						_clients;
 		std::map<std::string, Channel> 			_channels;
 		std::map<std::string, CommandHelper>	_commands;
-		void 								disconnectClient(Client& client, const std::string& reason);
-		void 								cleanupFd(struct pollfd* fds, int& nfds, int index);
+		void disconnectClient(Client& client, const std::string& reason);
+		void cleanupFd(struct pollfd* fds, int& nfds, int index);
+		void Help(Client& client, const std::string& message);
 		
 	public:
 		// constructor

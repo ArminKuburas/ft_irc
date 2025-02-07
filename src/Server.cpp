@@ -5,13 +5,11 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/09 11:44:34 by pmarkaid         ###   ########.fr       */
+/*   Created: 2025/02/09 11:46:28 by pmarkaid          #+#    #+#             */
+/*   Updated: 2025/02/09 11:48:36 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-/* ****************************************************************************/
-/*  ROFL:ROFL:ROFL:ROFL 													  */
 /*          _^___      										 				  */
 /* L     __/   [] \    										 			      */
 /* LOL===__        \   			MY ROFLCOPTER GOES BRRRRRR					  */
@@ -45,6 +43,7 @@ void Server::initializeCommandHandlers()
 	_commands["STATS"] = [this](Client& client, const std::string& message) 	{Stats(client, message); };
 	_commands["WHOIS"] = [this](Client& client, const std::string& message) 	{ Whois(client, message); };
 	_commands["TOPIC"] = [this](Client& client, const std::string& message) 	{ Topic(client, message); };
+	_commands["HELP"] = [this](Client& client, const std::string& message) 		{ Help(client, message); };
 	_commands["INVITE"] = [this](Client& client, const std::string& message) 	{ Invite(client, message); };
 	_commands["KICK"] = [this](Client& client, const std::string& message) 		{ Kick(client, message); };
 	_commands["WHO"] = [this](Client& client, const std::string& message) 		{ Who(client, message); };
@@ -283,6 +282,7 @@ int Server::connectionHandshake(Client& client, std::vector<std::string> message
 	if(client.getAuthentication() && !client.getNick().empty() && !client.getUser().empty()){
 		client.setRegistration(true);
 		SendToClient(client, ":" + _name + " 001 " + client.getNick() + " :Welcome to the server\r\n");
+		Help(client, "HELP");
 	}
 	return 1;
 }
@@ -1097,6 +1097,81 @@ void	Server::Topic(Client& client, const std::string& message)
 		SendToClient(*member, ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " TOPIC " + channel_name + " :" + new_topic + "\r\n");
 	}
 }
+
+void Server::Help(Client& client, const std::string& message) {
+    std::istringstream stream(message);
+    std::string command, topic;
+    stream >> command >> topic;
+
+    if (topic.empty()) {
+        // General help message
+		SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :\r\n");
+        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :Available commands:\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :NICK     - Change your nickname\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :USER     - Set your username and real name\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :JOIN     - Join a channel\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :PART     - Leave a channel\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :PRIVMSG  - Send a message to a user or channel\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :MODE     - Set user or channel modes\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :TOPIC    - View or change channel topic\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :WHOIS    - Get information about a user\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :QUIT     - Disconnect from the server\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :HELP     - Show this help message\r\n");
+        SendToClient(client, ":" + _name + " 706 " + client.getNick() + " :Type /HELP <command> for more information about a specific command\r\n");
+        return;
+    }
+
+    // Convert topic to uppercase for case-insensitive comparison
+    std::transform(topic.begin(), topic.end(), topic.begin(), ::toupper);
+
+    // Specific command help
+    if (topic == "NICK") {
+        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :NICK <nickname>\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Change your nickname. Nickname must be unique and contain only letters, numbers, and special characters [-_[]\\`^{}]\r\n");
+    }
+    else if (topic == "USER") {
+        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :USER <username> <hostname> <servername> <realname>\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Set your username and real name. This command can only be used during registration.\r\n");
+    }
+    else if (topic == "JOIN") {
+        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :JOIN <channel> [key]\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Join a channel. If the channel doesn't exist, it will be created.\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Channel names must start with # and may require a key if set.\r\n");
+    }
+    else if (topic == "PART") {
+        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :PART <channel>\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Leave a channel. You must be a member of the channel to leave it.\r\n");
+    }
+    else if (topic == "PRIVMSG") {
+        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :PRIVMSG <target> :<message>\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Send a message to a user or channel.\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Target can be a nickname or channel name.\r\n");
+    }
+    else if (topic == "MODE") {
+        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :MODE <target> <modes> [parameters]\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Set modes for users or channels.\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :User modes: +i (invisible)\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Channel modes: +i (invite-only), +t (protected topic), +k (key), +o (operator), +l (user limit)\r\n");
+    }
+    else if (topic == "TOPIC") {
+        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :TOPIC <channel> [:<new topic>]\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :View or change the topic of a channel.\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :If no topic is provided, shows the current topic.\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Only channel operators can change the topic if mode +t is set.\r\n");
+    }
+    else if (topic == "WHOIS") {
+        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :WHOIS <nickname>\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Get information about a user including their real name and channels.\r\n");
+    }
+    else if (topic == "QUIT") {
+        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :QUIT [:<message>]\r\n");
+        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Disconnect from the server with an optional quit message.\r\n");
+    }
+    else {
+        SendToClient(client, ":" + _name + " 524 " + client.getNick() + " " + topic + " :No help available on this topic\r\n");
+    }
+}
+
 
 void Server::Invite(Client& client, const std::string& message)
 {
