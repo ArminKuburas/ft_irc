@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/07 14:08:12 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/09 11:43:25 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,6 +110,17 @@ void Server::cleanupFd(struct pollfd* fds, int& nfds, int index) {
 	--nfds;
 }
 
+void debugPrintBytes(const char* buffer, ssize_t bytes_read) {
+    std::cout << "Received " << bytes_read << " bytes: ";
+    for (ssize_t i = 0; i < bytes_read; i++) {
+        unsigned char c = buffer[i];
+        if (c == '\r') std::cout << "\\r";
+        else if (c == '\n') std::cout << "\\n";
+        else std::cout << c;
+    }
+    std::cout << std::endl;
+}
+
 void	Server::Run()
 {
 	struct pollfd fds[1024];
@@ -195,22 +206,30 @@ void	Server::Run()
 					} else {
 						buffer[bytes_read] = '\0';
 						std::string receivedData(buffer);
-
+						debugPrintBytes(buffer, bytes_read);
 						// Identify which client sent the message using the fd
+
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
-						std::vector<std::string> messages = splitMessages(receivedData);
-						if (!client->getRegistration()) {
-							int grant_access = connectionHandshake(*client, messages, fds[i].fd); // Pass individual message
-							if (!grant_access) {
-								disconnectClient(*client, "Invalid Password");
-								cleanupFd(fds, nfds, i);
-								--i;
-								break;
-							}
-						} else {
-							for(const std::string& message : messages) {
-								std::cout << client->getClientFd() << " >> " << message << std::endl;
-								handleMessage(*client, message);
+						// Append new data to client's buffer
+						client->appendBuffer(buffer, bytes_read);
+
+						// Only process if we have a complete message
+						if (client->hasCompleteMessage()) {
+							std::string receivedData = client->getAndClearBuffer();
+							std::vector<std::string> messages = splitMessages(receivedData);
+							if (!client->getRegistration()) {
+								int grant_access = connectionHandshake(*client, messages, fds[i].fd); // Pass individual message
+								if (!grant_access) {
+									disconnectClient(*client, "Invalid Password");
+									cleanupFd(fds, nfds, i);
+									--i;
+									break;
+								}
+							} else {
+								for(const std::string& message : messages) {
+									std::cout << client->getClientFd() << " >> " << message << std::endl;
+									handleMessage(*client, message);
+								}
 							}
 						}
 					}
@@ -286,6 +305,8 @@ void Server::Stats(Client& client, const std::string& message){
 		SendToClient(client, ":" + _name + " Invalid stats option\r\n");
 }
 
+
+
 std::vector<std::string> Server::splitMessages(const std::string& message)
 {
 	std::vector<std::string> messages;
@@ -319,14 +340,13 @@ void Server::BroadcastMessage(std:: string &messasge)
 	}
 }
 
+
+
 void Server::handleMessage(Client& client, const std::string& message)
 {
 	std::istringstream stream(message);
 	std::string command;
 	stream >> command;
-	
-	// update activity timestamp
-	client.setLastActivity();
 
 	auto handler = _commands.find(command);
 	if (handler != _commands.end()) 

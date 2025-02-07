@@ -31,6 +31,8 @@ class Client
 		time_t				_lastActivity = time(nullptr);;
 		bool				_awaitingPong = false;
 		time_t				_pingTime = 0;
+		std::string			_messageBuffer;
+
 	public:
 		// constructor
 		Client( int fd, const sockaddr_in& addr);
@@ -71,4 +73,9 @@ class Client
 		void				addMode(char mode);
 		void				removeMode(char mode);
 		std::string 		getModes() const;
+
+		//handle messages
+		void				appendBuffer(const char* buffer, size_t length);
+		bool				hasCompleteMessage() const;
+		std::string			getAndClearBuffer();
 };
