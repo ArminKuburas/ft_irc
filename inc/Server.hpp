@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/04 11:27:53 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/07 12:13:29 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/07 13:38:40 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,7 @@
 #include <map>
 #include <sstream>
 #include <ctime>
+
 #include "Channel.hpp"
 
 #define SERVER_NAME "Zorg"
@@ -92,7 +93,7 @@ class Server
 		int									connectionHandshake(Client& client, std::vector<std::string> messages, int fd);
 		void								ModeHelperChannel(Client &client, std::map<std::string, Channel>::iterator it, char mode, bool adding, std::string code);
 		bool 								MultipleChannels( const std::string& message );
-		std::map<std::string, std::string>	MapChannels( const std::string& message );
+		std::map<std::string, std::string>	MapChannels(const std::string& message );
 
 		// Command handlers
 		void Ping(Client& client, const std::string& message);

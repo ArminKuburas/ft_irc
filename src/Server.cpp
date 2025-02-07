@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/07 12:24:04 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/07 13:38:20 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -554,21 +554,23 @@ void Server::Mode(Client& client, const std::string& message)
 
 	// check if target is either user or channel
 	if (modeChanges.empty() || target.empty())
-	{
-		SendToClient(client, ":" + _name + " 221 " + "RPL_UMODEIS " + client.getModes() + "\r\n");
 		return ;
-	}
 	if (target[0] == '#') // checking for channel
 	{
 		for (auto it = _channels.begin(); it != _channels.end(); ++it)
 		{
-			if (it->second.getName() == target)
-				channel = true;
-			else
+			std::cout << "Target is: " << target << std::endl;
+			std::cout << "Our channel map match: " << it->first << std::endl;
+			if (it->first == target)
 			{
-				SendToClient(client, ":" + _name + " 403 " + target +  ": Invalid channel name\r\n");
-				return ;
+				channel = true;
+				break ;
 			}
+		}
+		if (channel == false)
+		{
+			SendToClient(client, ":" + _name + " 403 " + target +  ": Invalid channel name\r\n");
+			return ;
 		}
 	}
 	else
@@ -694,7 +696,7 @@ void Server::Mode(Client& client, const std::string& message)
 						Client* possibleOperator = it->second.retrieveClient(targetUser);
 						if (possibleOperator != nullptr)
 						{
-							it->second.removeOperator(&client, possibleOperator, false);
+							it->second.removeOperator(&client, possibleOperator);
 							SendToChannel(it->second.getName(), messageSyntax + " " + targetUser + "\r\n", &client, UNIVERSAL_MSG);
 						}
 						else
@@ -909,6 +911,10 @@ void Server::Join(Client& client, const std::string& message)
 			
 			SendToClient(client, ":" + _name + " 333 " + client.getNick() + " " + channel + " " + it->second.getSetter() + " " + std::to_string(it->second.getTopicTime()) + "\r\n");
 		}
+		else
+		{
+			SendToClient(client, ":" + _name + " 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
+		}
 		SendToChannel(it->second.getName(), ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " JOIN " + it->second.getName() + "\r\n", &client, NORMAL_MSG); // why does this crap is persisting?
 		//:fdessoy!~fdessoy@87-92-251-103.rev.dnainternet.fi JOIN #SUPER_BBQ
 	}
@@ -982,51 +988,79 @@ void Server::SendToChannel(const std::string& channelName, const std::string& me
 
 void Server::Part(Client& client, const std::string& message)
 {
-	std::istringstream stream(message);
-	std::string command, channel;
-	stream >> command >> channel;
+	std::map<std::string, std::string>allChannels = MapChannels(message);
 
-	if (channel.empty() || channel[0] != '#')
-	{
-		//ERR_BADCHANMASK
-		SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + ": invalid channel syntax name\r\n");
-		return ;
-	}
-
-	auto it = _channels.find(channel);
-	// we did not find any channel
-	if (it == _channels.end()) 
-	{
-		//ERR_NOSUCHCHANNEL
-		SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channel + ": invalid channel name\r\n");
-		return ;
-	}
-	if (it->second.isOperator(&client))
-	{
-		it->second.removeOperator(&client, nullptr, true);
-		// case for when there are no operators left on the channel but there are still members in there
-		if (it->second.noOperators())
+	// need to make multiple parts inside this whole thing
+    	std::istringstream stream(message);
+    	std::string command, channel;
+    	stream >> command >> channel;
+		if (channel.empty() || channel[0] != '#')
 		{
-			for (Client* member : it->second.getMembers())
-			{
-				if (member->getClientFd() != client.getClientFd())
-				{
-					it->second.addOperator(nullptr, member);
-					break ;
-				}
-			}
-			SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + client.getNick() + " was the last operator and left. First of the list has been made operator" + "\r\n", &client, true);
+			// ERR_BADCHANMASK
+			SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + " :Invalid channel syntax name\r\n");
+			return;
 		}
-	}
-	if (it->second.isMember(&client))
-	{
+		auto it = _channels.find(channel);
+		if (it == _channels.end())
+		{
+			// ERR_NOSUCHCHANNEL
+			SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channel + " :No such channel\r\n");
+			return;
+		}
+
+		if (!it->second.isMember(&client))
+		{
+			SendToClient(client, ":" + _name + " 442 " + client.getNick() + " " + channel + " :You're not on that channel\r\n");
+			return;
+		}
+		std::string partMessage = ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " PART " + channel + "\r\n";
+		SendToChannel(channel, partMessage, &client, NORMAL_MSG);
+		if (it->second.isOperator(&client))
+			it->second.removeOperator(&client, nullptr, NORMAL_MSG);
 		it->second.removeMember(&client);
-		SendToClient(client, ":" + client.getNick() + " PART " + channel + "\r\n");
+		SendToClient(client, partMessage);
+		if (it->second.isChannelEmpty())
+			_channels.erase(channel);
 	}
-	else
-		SendToChannel(channel, ":" + client.getNick() + " PRIVMSG " + channel + " :" + "cannot part because you are not a member" + "\r\n", &client, true);
-	if (it->second.isChannelEmpty())
-		_channels.erase(channel);
+}
+
+std::map<std::string, std::string>	Server::MapChannels( const std::string& message )
+{
+	std::istringstream 					stream(message);
+	std::vector<std::string> 			channels;
+	std::vector<std::string> 			keys;
+	std::map<std::string, std::string>	channelMap;
+	bool								parsingKeys = false;
+	std::string							token;
+
+	if (!(stream >> token) || token != "/PART")
+	{
+		std::cerr << "Error" << std::endl;
+		return ;
+	}
+
+	while (stream >> token)
+	{
+		if (!parsingKeys)
+		{
+			if (token[0] == '#')
+				channels.push_back(token);
+			else 
+			{
+				parsingKeys = true;
+				keys.push_back(token);
+			}
+		}
+		else
+			keys.push_back(token);
+	}
+
+	for (size_t i = 0; i < channels.size(); ++i)
+	{
+		std::string respectiveKey = (i < keys.size()) ? keys[i] : "";
+		channelMap[channels[i]] = respectiveKey;
+	}
+	return (channelMap);
 }
 
 void	Server::Topic(Client& client, const std::string& message)
