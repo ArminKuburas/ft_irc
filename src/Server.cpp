@@ -5,8 +5,8 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/02/09 11:46:28 by pmarkaid          #+#    #+#             */
-/*   Updated: 2025/02/09 11:48:36 by pmarkaid         ###   ########.fr       */
+/*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
+/*   Updated: 2025/02/09 11:50:31 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1103,72 +1103,105 @@ void Server::Help(Client& client, const std::string& message) {
     std::string command, topic;
     stream >> command >> topic;
 
+    // Color code for yellow (8)
+    std::string color = "\033[33m";
+    std::string reset = "\033[0m";
+
     if (topic.empty()) {
-        // General help message
-		SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :\r\n");
-        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :Available commands:\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :NICK     - Change your nickname\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :USER     - Set your username and real name\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :JOIN     - Join a channel\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :PART     - Leave a channel\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :PRIVMSG  - Send a message to a user or channel\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :MODE     - Set user or channel modes\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :TOPIC    - View or change channel topic\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :WHOIS    - Get information about a user\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :QUIT     - Disconnect from the server\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :HELP     - Show this help message\r\n");
-        SendToClient(client, ":" + _name + " 706 " + client.getNick() + " :Type /HELP <command> for more information about a specific command\r\n");
+        // General help message using NOTICE instead of numeric replies
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Available commands:\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  NICK     - Change your nickname\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  USER     - Set your username and real name\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  JOIN     - Join a channel\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  PART     - Leave a channel\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  PRIVMSG  - Send a message to a user or channel\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  MODE     - Set user or channel modes\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  TOPIC    - View or change channel topic\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  WHOIS    - Get information about a user\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  QUIT     - Disconnect from the server\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  HELP     - Show this help message" + reset + "\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Type HELP <command> for more information about a specific command\r\n");
+		SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Note: In irssi, commands must be prepended with /quote (e.g., /quote NICK)\r\n");
         return;
     }
 
     // Convert topic to uppercase for case-insensitive comparison
     std::transform(topic.begin(), topic.end(), topic.begin(), ::toupper);
 
-    // Specific command help
+    // Specific command help using NOTICE
     if (topic == "NICK") {
-        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :NICK <nickname>\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Change your nickname. Nickname must be unique and contain only letters, numbers, and special characters [-_[]\\`^{}]\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :" + color + "NICK <nickname>" + reset + "\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Changes your nickname. Requirements:\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  - Must be unique\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  - Max length: 9 characters\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  - Must start with a letter\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  - Can contain: letters, numbers, and [-_[]\\`^{}]\r\n");
     }
     else if (topic == "USER") {
-        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :USER <username> <hostname> <servername> <realname>\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Set your username and real name. This command can only be used during registration.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :" + color + "USER <username> <hostname> <servername> <realname>" + reset + "\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Sets your username and real name during registration.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Can only be used once during initial connection.\r\n");
     }
     else if (topic == "JOIN") {
-        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :JOIN <channel> [key]\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Join a channel. If the channel doesn't exist, it will be created.\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Channel names must start with # and may require a key if set.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :" + color + "JOIN <channel> [key]" + reset + "\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Joins a channel. If it doesn't exist, creates it.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Channel names must start with # and may require a key.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :First user to join becomes channel operator.\r\n");
     }
     else if (topic == "PART") {
-        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :PART <channel>\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Leave a channel. You must be a member of the channel to leave it.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :" + color + "PART <channel>" + reset + "\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Leaves the specified channel.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :You must be a member of the channel to leave it.\r\n");
     }
     else if (topic == "PRIVMSG") {
-        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :PRIVMSG <target> :<message>\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Send a message to a user or channel.\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Target can be a nickname or channel name.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :" + color + "PRIVMSG <target> :<message>" + reset + "\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Sends a private message to a user or channel.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Target can be a nickname or channel name.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :For channels, you must be a member to send messages.\r\n");
     }
     else if (topic == "MODE") {
-        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :MODE <target> <modes> [parameters]\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Set modes for users or channels.\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :User modes: +i (invisible)\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Channel modes: +i (invite-only), +t (protected topic), +k (key), +o (operator), +l (user limit)\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :" + color + "MODE <target> <modes> [parameters]" + reset + "\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Sets modes for users or channels.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :User modes:\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  +i : Marks user as invisible\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Channel modes:\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  +i : Invite-only channel\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  +t : Protected topic (only ops can change)\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  +k : Set/remove channel key (password)\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  +o : Give/take channel operator status\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  +l : Set/remove user limit\r\n");
     }
     else if (topic == "TOPIC") {
-        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :TOPIC <channel> [:<new topic>]\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :View or change the topic of a channel.\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :If no topic is provided, shows the current topic.\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Only channel operators can change the topic if mode +t is set.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :" + color + "TOPIC <channel> [:<new topic>]" + reset + "\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Views or changes channel topic.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Without new topic, shows current topic.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :With mode +t, only channel operators can change topic.\r\n");
     }
     else if (topic == "WHOIS") {
-        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :WHOIS <nickname>\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Get information about a user including their real name and channels.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :" + color + "WHOIS <nickname>" + reset + "\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Shows information about a user:\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  - Nickname and username\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  - Real name\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :  - Server information\r\n");
     }
     else if (topic == "QUIT") {
-        SendToClient(client, ":" + _name + " 704 " + client.getNick() + " :QUIT [:<message>]\r\n");
-        SendToClient(client, ":" + _name + " 705 " + client.getNick() + " :Disconnect from the server with an optional quit message.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :" + color + "QUIT [:<message>]" + reset + "\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Disconnects from the server.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Optional quit message will be shown to other users.\r\n");
+    }
+	else if (topic == "STATS") {
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :" + color + "STATS N" + reset + "\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Shows list of current clients connected to the server.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Currently only supports the N flag.\r\n");
+    }
+    else if (topic == "HELP") {
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :" + color + "HELP [command]" + reset + "\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Shows help information.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :Without parameters, lists all available commands.\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :With a command name, shows detailed help for that command.\r\n");
     }
     else {
-        SendToClient(client, ":" + _name + " 524 " + client.getNick() + " " + topic + " :No help available on this topic\r\n");
+        SendToClient(client, ":" + _name + " NOTICE " + client.getNick() + " :No help available for: " + topic + "\r\n");
     }
 }
 
