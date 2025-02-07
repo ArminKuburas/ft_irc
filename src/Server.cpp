@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/07 12:02:24 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/07 12:16:00 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,6 +35,7 @@ void Server::initializeCommandHandlers()
 	_commands["NICK"] = [this](Client& client, const std::string& message) 		{Nick(client, message); };
 	_commands["USER"] = [this](Client& client, const std::string& message) 		{User(client, message); };
 	_commands["PING"] = [this](Client& client, const std::string& message) 		{Ping(client, message); };
+	_commands["PONG"] = [this](Client& client, const std::string& message) 		{Pong(client, message); };
 	_commands["MODE"] = [this](Client& client, const std::string& message) 		{Mode(client, message); };
 	_commands["PRIVMSG"] = [this](Client& client, const std::string& message) 	{Priv(client, message); };
 	_commands["JOIN"] = [this](Client& client, const std::string& message)		{Join(client, message); };
@@ -91,6 +92,24 @@ void	Server::setServerAddr()
 	this->_serverAddr.sin_addr.s_addr = INADDR_ANY;
 }
 
+void Server::cleanupFd(struct pollfd* fds, int& nfds, int index) {
+	// Reset the fd slot that's being removed
+	fds[index].fd = -1;
+	fds[index].events = 0;
+	fds[index].revents = 0;
+
+	// Move last fd to current position only if we're not at the last position
+	if (index < nfds - 1) {
+		fds[index] = fds[nfds - 1];
+	}
+	
+	// Clear the last fd slot
+	fds[nfds - 1].fd = -1;
+	fds[nfds - 1].events = 0;
+	fds[nfds - 1].revents = 0;
+	--nfds;
+}
+
 void	Server::Run()
 {
 	struct pollfd fds[1024];
@@ -99,13 +118,26 @@ void	Server::Run()
     fds[0].fd = this->_serverSocket;
     fds[0].events = POLLIN;
 
+	// define the maximum interval of time between client connection check
+	time_t lastCheck = std::time(NULL);
+	const time_t checkInterval = 60;
+
     while (true) 
 	{
-        int poll_result = poll(fds, nfds, -1);
+		// poll returns either at any activity of checkInterval time has passed
+        int poll_result = poll(fds, nfds, checkInterval * 1000);
         if (poll_result < 0) {
             perror("poll failed");
             return;
         }
+
+		// check for dead clients
+		time_t currentTime = std::time(NULL);
+		if ((currentTime - lastCheck) >= checkInterval)
+		{
+			checkClientTimeouts();
+			lastCheck = currentTime;
+		}
 
         for (int i = 0; i < nfds; ++i) {
             if (fds[i].revents & POLLIN) {
@@ -134,18 +166,32 @@ void	Server::Run()
 					// Handling data on established client connections
                     char buffer[1024];
                     ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer) - 1);
-					//std::cout << "Number of bytes read: " << bytes_read << std::endl;
-                    if (bytes_read <= 0) {
-                        std::cout << "[Zorg] Disconnecting client: " << fds[i].fd << std::endl;
-						for (auto& client : _clients)
-						{
+					 // Only disconnect on actual read errors
+                    if (bytes_read < 0) {
+						if (errno != EAGAIN && errno != EWOULDBLOCK) {
+							std::cout << "[Zorg] Disconnecting client: " << fds[i].fd << std::endl;
+							for (auto& client : _clients)
+							{
+								if(client.getClientFd() == fds[i].fd){
+									disconnectClient(client, "Connection error");
+									cleanupFd(fds, nfds, i);
+									--i;
+									break;
+								}
+							}
+						}
+						continue;
+					} else if (bytes_read == 0) {
+						// Client closed connection
+						std::cout << "[Zorg] Client closed connection: " << fds[i].fd << std::endl;
+						for (auto& client : _clients) {
 							if(client.getClientFd() == fds[i].fd){
-								disconnectClient(client);
+								disconnectClient(client, "Client closed connection");
+								cleanupFd(fds, nfds, i);
+								--i;
 								break;
 							}
 						}
-						fds[i] = fds[--nfds];
-						--i;
 					} else {
 						buffer[bytes_read] = '\0';
 						std::string receivedData(buffer);
@@ -154,10 +200,12 @@ void	Server::Run()
 						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
 						std::vector<std::string> messages = splitMessages(receivedData);
 						if (!client->getRegistration()) {
-							int grant_access = connectionHandshake(*client, messages); // Pass individual message
+							int grant_access = connectionHandshake(*client, messages, fds[i].fd); // Pass individual message
 							if (!grant_access) {
-								disconnectClient(*client);
+								disconnectClient(*client, "Invalid Password");
+								cleanupFd(fds, nfds, i);
 								--i;
+								break;
 							}
 						} else {
 							for(const std::string& message : messages) {
@@ -172,9 +220,15 @@ void	Server::Run()
 	}
 }
 
-int Server::connectionHandshake(Client& client, std::vector<std::string> messages) {
+int Server::connectionHandshake(Client& client, std::vector<std::string> messages, int fd) {
 
-	std::cout << "[Zorg] Connection Handshake......." << std::endl;
+	// If no messages received, keep connection alive
+	if (messages.empty()) {
+		return 1;
+	}
+	client.setLastActivity();
+
+	std::cout << "[Zorg] Connection Handshake for Client: " << fd << std::endl;
 	for(const std::string& message : messages) {
 		std::istringstream stream(message);
 		std::string command;
@@ -186,27 +240,24 @@ int Server::connectionHandshake(Client& client, std::vector<std::string> message
 		if (command == "PASS") {
 			int grant_access = Server::Pass(client, message);
 			if (!grant_access) {
-				SendToClient(client, ":" + _name + " 464 * :Password incorrect\r\n");
 				return 0;
 			}
 			client.setAuthentication(true);
 		} else if (command == "NICK") {
 			// Only allow NICK/USER after PASS
-			if (!client.getAuthentication()) {
+			if (!client.getAuthentication())
 				SendToClient(client, ":" + _name + " 451 * :You have not registered\r\n");
-				return 0;
-			}
-			Server::Nick(client, message);
+			else
+				Server::Nick(client, message);
 		} else if (command == "USER") {
-			if (!client.getAuthentication()) {
+			if (!client.getAuthentication())
 				SendToClient(client, ":" + _name + " 451 * :You have not registered\r\n");
-				return 0;
-			}
-			Server::User(client, message);
+			else
+				Server::User(client, message);
 		} else if (command == "CAP") {
 			Server::Cap(client, message);
 		} else {
-			SendToClient(client, ":" + _name + " 421 " + command + " :Unknown command\r\n");
+			SendToClient(client, ":" + _name + " 451 * :You have not registered\r\n");
 		}
 	}
 	// Register user
@@ -274,6 +325,9 @@ void Server::handleMessage(Client& client, const std::string& message)
 	std::string command;
 	stream >> command;
 	
+	// update activity timestamp
+	client.setLastActivity();
+
 	auto handler = _commands.find(command);
 	if (handler != _commands.end()) 
 	{
@@ -289,7 +343,7 @@ void Server::SendToClient(Client& client, const std::string& message)
 {
 	if (client.getClientFd() == -1) {
 		std::cerr << "[Zorg] Invalid file descriptor for client " << client.getClientFd() << std::endl;
-	return;
+		return;
 	}
 	ssize_t bytes_sent = send(client.getClientFd(), message.c_str(), message.length(), 0);
 	if (bytes_sent < 0) {
@@ -304,12 +358,48 @@ void Server::SendToClient(Client& client, const std::string& message)
 	}
 }
 
-void Server::disconnectClient(Client& client) {
-	SendToClient(client, "ERROR :Closing Link: " + client.getNick() + " (Client Quit)\r\n");
+void Server::disconnectClient(Client& client, const std::string& reason) {
+
+	//broadcast QUIT to the rest of the users
+	std::string quitBroadcast = ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " QUIT :" + reason + "\r\n";
+	for (auto& c : _clients) {
+		if (c.getClientFd() != client.getClientFd()) {
+			SendToClient(c, quitBroadcast);
+		}
+	}
+
+	SendToClient(client, ":" + _name + " ERROR :Closing Link: " + client.getNick() + " " + reason + "\r\n");
 	shutdown(client.getClientFd(), SHUT_WR);
 	close(client.getClientFd());
 	_clients.erase(std::remove_if(_clients.begin(), _clients.end(),
 		[fd = client.getClientFd()](const Client& c) { return c.getClientFd() == fd; }), _clients.end());
+
+}
+
+void Server::checkClientTimeouts()
+{
+	time_t currentTime = time(NULL);
+	const time_t timeout = 300; // 5 minutes in seconds
+	const time_t pingTimeout = 10; // 10 seconds to respond to PING
+
+	for (auto& client : _clients)
+	{
+		if (client.getAwaitingPong())
+		{
+			// If client hasn't responded to PING within 10 seconds
+			if ((currentTime - client.getPingTime()) > pingTimeout)
+			{
+				disconnectClient(client, "Inactivity timeout");
+				continue;
+			}
+		}
+		// if more than 5 minutes since last activity sent PING
+		if ((currentTime - client.getLastActivity()) > timeout){
+			std::cout << "[Zorg] PING dead clients..." << std::endl;
+			SendToClient(client, "PING " + client.getNick() + "\r\n");
+			client.setPingStatus(true);
+		}
+	}
 }
 
 void Server::Cap(Client& client, const std::string& message)
@@ -348,9 +438,9 @@ void Server::Nick(Client& client, const std::string& message)
 		return;
 	}
 
-	// Check if nickname is already in use
+	// Check if nickname is already in use. Server name cannot be used
 	for (const auto& existingClient : _clients) {
-		if (existingClient.getNick() == newNickname) {
+		if (existingClient.getNick() == newNickname || newNickname == _name){
 				SendToClient(client, ":" + _name + " 433 * " + newNickname + " :Nickname is already in use\r\n");
 				return;
 			}
@@ -424,20 +514,33 @@ void Server::Whois(Client& client, const std::string& message)
 
 void Server::Ping(Client& client, const std::string& message)
 {
-	size_t pos = message.find(" ");
-	if (pos == std::string::npos || pos + 1 >= message.size())
+	std::istringstream stream(message);
+	std::string command, target;
+	stream >> command >> target;
+
+	// No target for the PING
+	if (target.empty())
 	{
-		SendToClient(client, ":" + this->_name + " 409 " + "ERR_NOORIGIN :No origin specified\r\n");
+		SendToClient(client, ":" + _name + " 409 " + client.getNick() + " :No origin specified\r\n");
 		return;
 	}
-	std::string server1 = message.substr(pos + 1);
-	if (server1.empty())
+	// If target is the server name, respond with PONG
+	if (target == _name)
 	{
-		SendToClient(client, ":" + this->_name + " 409 " + "ERR_NOORIGIN :No origin specified\r\n");
-		return;
+		SendToClient(client, "PONG :"+ target + "\r\n");
 	}
-	//PONG response.
-	SendToClient(client, "PONG " + server1 + "\r\n");
+	else
+	{
+		// Any other target (including client nicknames) should get ERR_NOSUCHSERVER
+		SendToClient(client, ":" + _name + " 402 " + client.getNick() + " " + target + " :No such server\r\n");
+	}
+}
+
+void Server::Pong(Client& client, const std::string& message)
+{
+	// no need to answer anything, just update ping status
+	(void)message;
+	client.setPingStatus(false);
 }
 
 void Server::Mode(Client& client, const std::string& message)
@@ -524,35 +627,43 @@ void Server::Mode(Client& client, const std::string& message)
 		{
 			std::string operatorPrivilege = " 324 ";
 			std::string noOperatorPrivilege = " 482 ";
+			std::string messageSyntax = ":~" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " MODE " + target + " " + modeChanges;
 			if (ch == '+')
 				adding = true;
 			else if (ch == '-')
 				adding = false;
 			else if (ch == 'i')
 			{
-				if (it->second.isOperator(&client) && it->second.isMember(&client))
+				if (it->second.isOperator(&client) && it->second.isMember(&client) && targetUser.empty())
+				{
 					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+					SendToChannel(it->second.getName(), messageSyntax + "\r\n", &client, UNIVERSAL_MSG);
+				}
 				else
-					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
+					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + " :you don’t have operator privileges to change modes\r\n");
 			}
 			else if (ch == 'k') // insert key to channel
 			{
 				if (it->second.isOperator(&client) && it->second.isMember(&client)) // pre-existing key needs a different treament for error
 				{
-					if (!it->second.getKey().empty())
-					{
-						SendToClient(client, ":" + this->_name + " 467 " + client.getNick() + " " + target + ":key already set\r\n");
-						return ;
-					}
-					if (targetUser.empty())
-					{
-						SendToClient(client, ":" + this->_name + " 461 " + client.getNick() + " " + target + ":key already set\r\n");
-						return ;
-					}
 					if (adding)
+					{
+						if (!it->second.getKey().empty() && targetUser.empty())
+						{
+							SendToClient(client, ":" + this->_name + " 467 " + client.getNick() + " " + target + ":key already set\r\n");
+							return ;
+						}
 						it->second.setKey(targetUser);
+						SendToChannel(it->second.getName(), messageSyntax + " " + targetUser + "\r\n", &client, UNIVERSAL_MSG);
+					}
 					else
+					{
+						if (!targetUser.empty())
+							return ;
 						it->second.setKey("");
+						SendToChannel(it->second.getName(), messageSyntax + "\r\n", &client, UNIVERSAL_MSG);
+
+					}
 					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
 				}
 				else
@@ -566,7 +677,10 @@ void Server::Mode(Client& client, const std::string& message)
 					{
 						Client* newOperator = it->second.retrieveClient(targetUser);
 						if (newOperator != nullptr)
+						{
 							it->second.addOperator(&client, newOperator);
+							SendToChannel(it->second.getName(), messageSyntax + " " + targetUser + "\r\n", &client, UNIVERSAL_MSG);
+						}
 						else
 							SendToClient(client, ":" + this->_name + " 401 " + client.getNick() + " " + target + ":no such nick or channel\r\n");
 					}
@@ -579,16 +693,23 @@ void Server::Mode(Client& client, const std::string& message)
 					{
 						Client* possibleOperator = it->second.retrieveClient(targetUser);
 						if (possibleOperator != nullptr)
+						{
 							it->second.removeOperator(&client, possibleOperator, false);
+							SendToChannel(it->second.getName(), messageSyntax + " " + targetUser + "\r\n", &client, UNIVERSAL_MSG);
+						}
 						else
 							SendToClient(client, ":" + this->_name + " 401 " + client.getNick() + " " + target + ":no such nick or channel\r\n");
+
 					}
 				}
 			}
 			else if (ch == 't') // change or view the channel topic
 			{
-				if (it->second.isOperator(&client) && it->second.isMember(&client))
+				if (it->second.isOperator(&client) && it->second.isMember(&client) && targetUser.empty())
+				{
+					SendToChannel(it->second.getName(), messageSyntax + "\r\n", &client, UNIVERSAL_MSG);
 					ModeHelperChannel(client, it, ch, adding, operatorPrivilege);
+				}
 				else
 					SendToClient(client, ":" + this->_name + noOperatorPrivilege + client.getNick() + " " + target + ":you don’t have operator privileges to change modes\r\n");
 			}
@@ -614,6 +735,7 @@ void Server::Mode(Client& client, const std::string& message)
 								if (nbMembers < it->second.getNbMembers())
 									SendToClient(client, ":" + this->_name + " 471 " + client.getNick() + " " + ":channel is already over the limit\r\n");
 								it->second.limitMaxMembers(nbMembers);
+								SendToChannel(it->second.getName(), messageSyntax + " " + std::to_string(nbMembers) + "\r\n", &client, UNIVERSAL_MSG);
 							} catch (const std::invalid_argument&)
 							{
 								SendToClient(client, ":" + this->_name + " 461 " + client.getNick() + " " + ":not enough parameters\r\n");
@@ -647,7 +769,7 @@ void Server::ModeHelperChannel(Client& client, std::map<std::string, Channel>::i
 {
 	if (adding)
 	{
-		it->second.setModes(mode); // +o, +k, +l need to be handled on server side. Class cannot handle.
+		it->second.setModes(mode);
 		SendToClient(client, ":" + this->_name + code + it->first + " +" + mode + "\r\n");
 	}
 	else
@@ -685,7 +807,9 @@ void Server::Priv(Client& client, const std::string& message)
 			return ;
 		}
 		if (it->second.isMember(&client))
-			SendToChannel(target, ":" + client.getNick() + " PRIVMSG " + target + " :" + messageContent + "\r\n", &client, false);
+		{
+			SendToChannel(target, ":" + client.getNick() + " PRIVMSG " + target + " :" + messageContent + "\r\n", &client, NORMAL_MSG);
+		}
 		else
 		{
 			std::string ERR_NOMEMBER = "Zorg: you are not a member of the channel " + target + "\r\n";
@@ -709,24 +833,25 @@ void Server::Priv(Client& client, const std::string& message)
 
 void Server::Quit(Client& client, const std::string& message)
 {
-	std::string quitMessage = "[Zorg] Client has disconnected";
-	if (!message.empty())
+	std::istringstream stream(message);
+	std::string command, reason;
+	stream >> command >> reason;
+
+	std::string quitMessage = "Client has disconnected";
+	if (!reason.empty())
 	{
-		quitMessage = message;
+		quitMessage = reason;
 		if (quitMessage[0] == ':')
 			quitMessage = quitMessage.substr(1);
 	}
-	std::string quitBroadcast = ":" + client.getNick() + " QUIT :" + quitMessage + "\r\n";
-	for (auto& c : _clients)
-	{
-		if (c.getNick() != client.getNick())
-			SendToClient(c, quitBroadcast);
-	}
-	std::cout << "[Zorg] Client " << client.getNick() << " has disconnected\r\n";
+	disconnectClient(client, quitMessage);
+	std::cout << "[Zorg] Client " << client.getNick() << " has disconnected" << std::endl;;
 }
 
 void Server::Join(Client& client, const std::string& message)
 {
+	std::map<std::string, std::string>allChannels = MapChannels(message);
+	
 	std::istringstream stream(message);
 	std::string command, channel, key;
 	stream >> command >> channel >> key;
@@ -757,20 +882,25 @@ void Server::Join(Client& client, const std::string& message)
 	if (it->second.getMaxMembers())
 	{
 		// check if there is space
-		if ((it->second.getNbMembers() + 1) > it->second.getNumberMaxMembers())
+		if (it->second.getNbMembers() >= it->second.getNumberMaxMembers())
 		{
 			SendToClient(client, ":" + _name + " 471 " + client.getNick() + " " + channel + " :channel is full\r\n");
 			return ;
 		}
 	}
 
-	it->second.addMember(&client);	
+	it->second.addMember(&client);
 	if (it->second.isMember(&client))
 	{
 		SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
 		std::string namesList;
 		for (Client* member : it->second.getMembers())
-			namesList += member->getNick() + " ";
+		{
+			if (it->second.isOperator(member))
+				namesList += "@" + member->getNick() + " ";
+			else
+				namesList += member->getNick() + " ";
+		}
 		SendToClient(client, ":" + _name + " 353 " + client.getNick() + " = " + channel + " :" + namesList + "\r\n");
 		SendToClient(client, ":" + _name + " 366 " + client.getNick() + " " + channel + " :End of /NAMES list.\r\n");
 		if (!it->second.getTopic().empty())
@@ -779,6 +909,8 @@ void Server::Join(Client& client, const std::string& message)
 			
 			SendToClient(client, ":" + _name + " 333 " + client.getNick() + " " + channel + " " + it->second.getSetter() + " " + std::to_string(it->second.getTopicTime()) + "\r\n");
 		}
+		SendToChannel(it->second.getName(), ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " JOIN " + it->second.getName() + "\r\n", &client, NORMAL_MSG); // why does this crap is persisting?
+		//:fdessoy!~fdessoy@87-92-251-103.rev.dnainternet.fi JOIN #SUPER_BBQ
 	}
 }
 
@@ -795,10 +927,10 @@ int Server::Pass(Client& client, const std::string& message){
 	if(password.empty()){
 		SendToClient(client, ":" + _name + " 461 " + client.getNick() +  "PASS :Not enough parameters\r\n");
 		return 0;
-	}
+	}	
 
 	if(password != _password){
-		SendToClient(client, ":" + _name + " 464 " + client.getNick() +  " :Password Incorrect\r\n");
+		SendToClient(client, ":" + _name + " 464 * :Password Incorrect\r\n");
 		return 0;
 	}
 	// no response message in case of correct PASS
@@ -806,29 +938,47 @@ int Server::Pass(Client& client, const std::string& message){
 	return 1;
 }
 
-
-void Server::SendToChannel(const std::string& channelName, const std::string& message, Client* sender, bool justJoined)
+/**
+ * SendToChannel codes (last parameter):
+ * 
+ * 1. JUST_JOINED - simple just joined message;
+ * 2. NORMAL_MSG - simple message that goes to the chat, but not sender
+ * 3. UNIVERSAL_MSG - Includes members and sender.
+ */
+void Server::SendToChannel(const std::string& channelName, const std::string& message, Client* sender, int code)
 {
 	auto it = _channels.find(channelName);
 	if (it == _channels.end())
 		return ;
 	
-	if (justJoined)
-	{
-		if (it->second.isMember(sender))
-			SendToClient(*sender, message);
-		return ;
-	}
 
-	for (Client* member : it->second.getMembers())
-	{
-		if (member != sender)
-		{
+	switch (code) {
+		case JUST_JOINED:
 			if (it->second.isMember(sender))
-				SendToClient(*member, message);
-		}
+				SendToClient(*sender, message);
+			break ;
+		case NORMAL_MSG:
+			for (Client* member : it->second.getMembers())
+			{
+				if (member != sender)
+				{
+					if (it->second.isMember(sender))
+						SendToClient(*member, message);
+				}
+			}
+			break ;
+		case UNIVERSAL_MSG:
+			for (Client* member : it->second.getMembers())
+			{
+				if (it->second.isMember(sender))
+					SendToClient(*member, message);
+			}
+			break ;
+		default:
+			break ;
 	}
 }
+
 
 void Server::Part(Client& client, const std::string& message)
 {
