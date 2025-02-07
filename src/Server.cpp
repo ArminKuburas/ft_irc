@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/05 15:28:06 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/07 11:00:21 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,7 @@ void Server::initializeCommandHandlers()
 	_commands["WHOIS"] = [this](Client& client, const std::string& message) 	{ Whois(client, message); };
 	_commands["TOPIC"] = [this](Client& client, const std::string& message) 	{ Topic(client, message); };
 	_commands["INVITE"] = [this](Client& client, const std::string& message) 	{ Invite(client, message); };
-	_commands["KICK"] = [this](Client& client, const std::string& message) 	{ Kick(client, message); };
+	_commands["KICK"] = [this](Client& client, const std::string& message) 		{ Kick(client, message); };
 }
 
 Server::~Server()
@@ -778,10 +778,6 @@ void Server::Join(Client& client, const std::string& message)
 			
 			SendToClient(client, ":" + _name + " 333 " + client.getNick() + " " + channel + " " + it->second.getSetter() + " " + std::to_string(it->second.getTopicTime()) + "\r\n");
 		}
-		else
-		{
-			SendToClient(client, ":" + _name + " 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
-		}
 	}
 }
 
@@ -977,7 +973,7 @@ void Server::Kick(Client& client, const std::string& message)
 {
 	std::istringstream stream(message);
 	std::string command, channelNames, usersToKick, comment;
-	stream >> command, channelNames, usersToKick, comment;
+	stream >> command >> channelNames >> usersToKick >> comment;
 	std::getline(stream, comment);
 	if (!comment.empty() && comment[0] == ':')
 		comment = comment.substr(1);
@@ -985,12 +981,12 @@ void Server::Kick(Client& client, const std::string& message)
 		comment = client.getNick();
 	if (channelNames.empty() || usersToKick.empty())
 	{
-		SendToClient(client, ":" + _name + " 476 " + kicker.getNick() + " " + channelName + " :Invalid channel syntax\r\n");
+		SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channelNames + " :Invalid channel syntax\r\n");
+		return;
 	}
 	std::vector<std::string> channels, users;
 	std::istringstream channelStream(channelNames), userStream(usersToKick);
 	std::string token;
-
 	while (std::getline(channelStream, token, ','))
 	{
 		channels.push_back(token);
@@ -1004,9 +1000,9 @@ void Server::Kick(Client& client, const std::string& message)
 		SendToClient(client, ":" + _name + " 461 " + client.getNick() + " KICK :Mismatched channels and users\r\n");
 		return;
 	}
-	
 	for (size_t i = 0; i < users.size(); ++i)
 	{
+		std::cout << "Inside for loop" << std::endl;
 		std::string channelName = (channels.size() == 1) ? channels[0] : channels[i];
 		std::string userToKick = users[i];
 		if (channelName[0] != '#')
@@ -1037,7 +1033,6 @@ void Server::Kick(Client& client, const std::string& message)
 			SendToClient(client, ":" + _name + " 401 " + client.getNick() + " " + userToKick + " :No such nick\r\n");
 			continue;
 		}
-		
 		Client& target = *targetIt;
 		if (!channel.isMember(&target))
 		{
@@ -1045,7 +1040,7 @@ void Server::Kick(Client& client, const std::string& message)
 			continue;
 		}
 		std::string KickMessage = ":" + client.getNick() + "!" + client.getUser() + "@" + client.getHost() + " KICK " + channelName + " " + userToKick + " :" + comment + "\r\n";
-		SendToChannel(channelName, KickMessage, nullptr, false);
+		SendToChannel(channelName, KickMessage, &client, true);
 		SendToClient(target, KickMessage);
 		channel.removeMember(&target);
 		if (channel.isOperator(&target)) {
