@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/09 12:15:42 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/10 11:10:19 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,6 +47,7 @@ void Server::initializeCommandHandlers()
 	_commands["INVITE"] = [this](Client& client, const std::string& message) 	{ Invite(client, message); };
 	_commands["KICK"] = [this](Client& client, const std::string& message) 		{ Kick(client, message); };
 	_commands["WHO"] = [this](Client& client, const std::string& message) 		{ Who(client, message); };
+	_commands["LIST"] = [this](Client& client, const std::string& message) 		{ List(client, message); };
 }
 
 Server::~Server()
@@ -887,7 +888,7 @@ void Server::Join(Client& client, const std::string& message)
 		{
 			// ERR_BADCHANMASK
 			SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + ":invalid channel name" + "\r\n");
-			continue ;
+			return ;
 		}
 
 		// We look for existing channel, and if it does not exist, we create it
@@ -897,7 +898,7 @@ void Server::Join(Client& client, const std::string& message)
     	if (!it->second.getKey().empty() && it->second.getKey() != key)
     	{
     	    SendToClient(client, ":" + _name + " 475 " + client.getNick() + " " + channel + " :bad channel key\r\n");
-    	    continue ;
+    	    return ;
     	}
 	
 		// check if server has imposed limit
@@ -907,15 +908,17 @@ void Server::Join(Client& client, const std::string& message)
 			if (it->second.getNbMembers() >= it->second.getNumberMaxMembers())
 			{
 				SendToClient(client, ":" + _name + " 471 " + client.getNick() + " " + channel + " :channel is full\r\n");
-				continue ;
+				return ;
 			}
 		}
 
 		// avoid double join
 		if (it->second.isMember(&client))
-			continue ;
+			return ;
 
 		it->second.addMember(&client);
+		SendToChannel(it->second.getName(), ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " JOIN " + it->second.getName() + "\r\n", &client, NORMAL_MSG); // why does this crap is persisting?
+		//:fdessoy!~fdessoy@87-92-251-103.rev.dnainternet.fi JOIN #SUPER_BBQ
 		if (it->second.isMember(&client))
 		{
 			SendToClient(client, ":" + client.getNick() + " JOIN " + channel + "\r\n");
@@ -939,8 +942,6 @@ void Server::Join(Client& client, const std::string& message)
 			{
 				SendToClient(client, ":" + _name + " 331 " + client.getNick() + " " + channel + " :No topic is set\r\n");
 			}
-			SendToChannel(it->second.getName(), ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " JOIN " + it->second.getName() + "\r\n", &client, NORMAL_MSG); // why does this crap is persisting?
-			//:fdessoy!~fdessoy@87-92-251-103.rev.dnainternet.fi JOIN #SUPER_BBQ
 		}
 	}
 }
@@ -1025,7 +1026,7 @@ void Server::Part(Client& client, const std::string& message)
 		{
 			// ERR_BADCHANMASK
 			SendToClient(client, ":" + _name + " 476 " + client.getNick() + " " + channel + " :Invalid channel syntax name\r\n");
-			continue ;
+			return ;
 		}
 
 		auto it = _channels.find(channel);
@@ -1033,13 +1034,13 @@ void Server::Part(Client& client, const std::string& message)
 		{
 			// ERR_NOSUCHCHANNEL
 			SendToClient(client, ":" + _name + " 403 " + client.getNick() + " " + channel + " :No such channel\r\n");
-			continue ;
+			return ;
 		}
 
 		if (!it->second.isMember(&client))
 		{
 			SendToClient(client, ":" + _name + " 442 " + client.getNick() + " " + channel + " :You're not on that channel\r\n");
-			continue ;
+			return ;
 		}
 		std::string partSyntax = ":" + client.getNick() + "!~" + client.getNick() + "@" + client.getHost() + " PART " + channel + "\r\n";
 		SendToChannel(channel, partSyntax, &client, NORMAL_MSG);
@@ -1050,6 +1051,20 @@ void Server::Part(Client& client, const std::string& message)
 		if (it->second.isChannelEmpty())
 			_channels.erase(channel);
 	}
+}
+
+void Server::List(Client& client, const std::string& message) {
+	// Send channel list header
+	static_cast<void>(message);
+	for (const auto& channel : _channels) {
+		// Send RPL_LIST (322) for each channel
+		SendToClient(client, ":" + _name + " 322 " + client.getNick() + " " + 
+					channel.first + " " + 
+					std::to_string(channel.second.getMembers().size()) + 
+					" :" + channel.second.getTopic() + "\r\n");
+	}
+	// Send end of list
+	SendToClient(client, ":" + _name + " 323 " + client.getNick() + " :End of /LIST\r\n");
 }
 
 void	Server::Topic(Client& client, const std::string& message)

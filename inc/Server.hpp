@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/04 11:27:53 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/09 11:49:52 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/10 11:02:28 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -114,6 +114,7 @@ class Server
 		void Invite(Client& client, const std::string& message);
 		void Kick(Client& client, const std::string& message);
 		void Who(Client& client, const std::string& message);
+		void List(Client& client, const std::string& message);
 
 
 		void 								initializeCommandHandlers();
