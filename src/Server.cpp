@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/10 13:49:24 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/10 14:07:38 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -264,12 +264,30 @@ void	Server::Run()
 				continue;
 			}
 
-			if (_poll_fds[i].fd == _serverSocket) {
-				handleNewConnection();
-			} else {
-				if (!handleClientData(i)) {
-					cleanupFd(i);
-					--i;
+			if (_poll_fds[i].fd == _serverSocket)
+			{
+				try
+				{
+					handleNewConnection();
+				}
+				catch (std::exception &e)
+				{
+					std::cerr << "handle new connection error. what is: " << e.what() << std::endl;
+				}
+			}
+			else
+			{
+				try
+				{
+					if (!handleClientData(i))
+					{
+						cleanupFd(i);
+						--i;
+					}
+				}
+				catch (std::exception &e)
+				{
+					std::cerr << "handle client data error. what is: " << e.what() << std::endl;
 				}
 			}
 		}
