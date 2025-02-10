@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/10 11:10:19 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/10 13:34:07 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -366,16 +366,27 @@ void Server::SendToClient(Client& client, const std::string& message)
 		std::cerr << "[Zorg] Invalid file descriptor for client " << client.getClientFd() << std::endl;
 		return;
 	}
-	ssize_t bytes_sent = send(client.getClientFd(), message.c_str(), message.length(), 0);
-	if (bytes_sent < 0) {
-		std::cerr << "[Zorg] Send failed. Error code: " << errno << " - " << strerror(errno) << std::endl;
+	try 
+	{
+		ssize_t bytes_sent = send(client.getClientFd(), message.c_str(), message.length(), 0);
+		if (bytes_sent < 0)
+		{
+			std::cerr << "[Zorg] Send failed. Error code: " << errno << " - " << strerror(errno) << std::endl;
+		}
+		else
+		{
+			std::cout << client.getClientFd() << " << " << message;
+		}
+		// check that the whole message was sent
+		if (bytes_sent != static_cast<ssize_t>(message.size()))
+		{
+			std::cerr << "[Zorg] Warning: Not all bytes were sent to " << client.getClientFd() << std::endl;
+		}
 	}
-	else {
-		std::cout << client.getClientFd() << " << " << message;
-	}
-	// check that the whole message was sent
-	if (bytes_sent != static_cast<ssize_t>(message.size())) {
-		std::cerr << "[Zorg] Warning: Not all bytes were sent to " << client.getClientFd() << std::endl;
+	catch (std::exception &e)
+	{
+		std::cerr << "Exception caught: " << e.what() << std::endl;
+		std::cerr << "Original string was: " << message << std::endl;
 	}
 }
 
