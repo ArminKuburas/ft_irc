@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/10 13:34:07 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/10 13:49:24 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,22 +92,18 @@ void	Server::setServerAddr()
 	this->_serverAddr.sin_addr.s_addr = INADDR_ANY;
 }
 
-void Server::cleanupFd(struct pollfd* fds, int& nfds, int index) {
-	// Reset the fd slot that's being removed
-	fds[index].fd = -1;
-	fds[index].events = 0;
-	fds[index].revents = 0;
-
-	// Move last fd to current position only if we're not at the last position
-	if (index < nfds - 1) {
-		fds[index] = fds[nfds - 1];
+void Server::cleanupFd(int fd_index) {
+	if (fd_index < 0 || fd_index >= static_cast<int>(_poll_fds.size())) {
+		return;
 	}
 	
-	// Clear the last fd slot
-	fds[nfds - 1].fd = -1;
-	fds[nfds - 1].events = 0;
-	fds[nfds - 1].revents = 0;
-	--nfds;
+	// Close the socket if it's still open
+	if (_poll_fds[fd_index].fd >= 0) {
+		close(_poll_fds[fd_index].fd);
+	}
+	
+	// Remove the fd from our poll array
+	_poll_fds.erase(_poll_fds.begin() + fd_index);
 }
 
 // void debugPrintBytes(const char* buffer, ssize_t bytes_read) {
@@ -121,119 +117,159 @@ void Server::cleanupFd(struct pollfd* fds, int& nfds, int index) {
 //     std::cout << std::endl;
 // }
 
+
+bool Server::handleNewConnection() {
+    if (_poll_fds.size() >= MAX_CLIENTS) {
+        std::cerr << "Maximum clients reached, rejecting connection" << std::endl;
+        return false;
+    }
+
+    struct sockaddr_in client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
+    
+    int client_fd = accept(_serverSocket, (struct sockaddr*)&client_addr, &client_addr_len);
+                         
+    if (client_fd < 0) {
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            perror("accept failed");
+        }
+        return false;
+    }
+
+    // Make socket non-blocking
+    int flags = fcntl(client_fd, F_GETFL, 0);
+    if (flags < 0 || fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        close(client_fd);
+        return false;
+    }
+
+    // Add to poll array
+    struct pollfd client_pollfd;
+    client_pollfd.fd = client_fd;
+    client_pollfd.events = POLLIN;
+    client_pollfd.revents = 0;
+    _poll_fds.push_back(client_pollfd);
+
+    // Add client to clients list
+    _clients.emplace_back(client_fd, client_addr);
+
+    std::cout << "[" + _name +"] New client connected: " << client_fd << std::endl;
+    return true;
+}
+
+bool Server::handleClientData(size_t index) {
+	char buffer[1024];
+	int fd = _poll_fds[index].fd;
+	
+	ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+	
+	if (bytes_read < 0) {
+		if (errno != EAGAIN && errno != EWOULDBLOCK) {
+			auto client_it = std::find_if(_clients.begin(), _clients.end(),
+				[fd](const Client& c) { return c.getClientFd() == fd; });
+				
+			if (client_it != _clients.end()) {
+				disconnectClient(*client_it, "Connection error");
+			}
+			return false;
+		}
+		return true;
+	}
+	
+	if (bytes_read == 0) {
+		auto client_it = std::find_if(_clients.begin(), _clients.end(),
+			[fd](const Client& c) { return c.getClientFd() == fd; });
+			
+		if (client_it != _clients.end()) {
+			disconnectClient(*client_it, "Client closed connection");
+		}
+		return false;
+	}
+
+	// Handle received data
+	buffer[bytes_read] = '\0';
+	auto client_it = std::find_if(_clients.begin(), _clients.end(),
+		[fd](const Client& c) { return c.getClientFd() == fd; });
+		
+	if (client_it != _clients.end()) {
+		client_it->appendBuffer(buffer, bytes_read);
+		client_it->setLastActivity();
+
+		if (client_it->hasCompleteMessage()) {
+			std::string data = client_it->getAndClearBuffer();
+			std::vector<std::string> messages = splitMessages(data);
+			
+			if (!client_it->getRegistration()) {
+				if (!connectionHandshake(*client_it, messages, fd)) {
+					disconnectClient(*client_it, "Invalid Password");
+					return false;
+				}
+			} else {
+				for (const std::string& message : messages) {
+					handleMessage(*client_it, message);
+				}
+			}
+		}
+	}
+	
+	return true;
+}
+
 void	Server::Run()
 {
-	struct pollfd fds[1024];
-    int nfds = 1;
+	_poll_fds.reserve(MAX_CLIENTS);
 
-    fds[0].fd = this->_serverSocket;
-    fds[0].events = POLLIN;
+	// Add server socket to poll array
+    struct pollfd server_pollfd;
+    server_pollfd.fd = _serverSocket;
+    server_pollfd.events = POLLIN;
+    server_pollfd.revents = 0;
+    _poll_fds.push_back(server_pollfd);
 
 	// define the maximum interval of time between client connection check
 	time_t lastCheck = std::time(NULL);
 	const time_t checkInterval = 60;
 
-    while (true) 
-	{
-		// poll returns either at any activity of checkInterval time has passed
-        int poll_result = poll(fds, nfds, checkInterval * 1000);
-        if (poll_result < 0) {
-            perror("poll failed");
-            return;
-        }
+	while (true) {
+		int poll_result = poll(_poll_fds.data(), _poll_fds.size(), checkInterval * 1000);
+		if (poll_result < 0) {
+			if (errno == EINTR) continue;  // Handle interrupted system call
+			perror("poll failed");
+			return;
+		}
 
-		// check for dead clients
+		// Check for timeouts
 		time_t currentTime = std::time(NULL);
-		if ((currentTime - lastCheck) >= checkInterval)
-		{
+		if ((currentTime - lastCheck) >= checkInterval) {
 			checkClientTimeouts();
 			lastCheck = currentTime;
 		}
 
-        for (int i = 0; i < nfds; ++i) {
-            if (fds[i].revents & POLLIN) {
-                if (fds[i].fd == this->_serverSocket) {
-					// Handling incoming connection requests on the listening socket
-                    // New client connection
-                    struct sockaddr_in client_addr;
-                    socklen_t client_addr_len = sizeof(client_addr);
-
-                    int client_fd = accept(this->_serverSocket, (struct sockaddr*)&client_addr, &client_addr_len);
-                    if (client_fd < 0) {
-                        perror("accept failed");
-                        continue;
-                    }
-					// Make the new socket non-blocking
-					int flags = fcntl(client_fd, F_GETFL, 0);
-					fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
-
-                    this->_clients.emplace_back(client_fd, client_addr);
-					fds[nfds].fd = client_fd;
-                    fds[nfds].events = POLLIN;
-
-                    std::cout << "[" + this->_name +"] New client connected: " << client_fd << std::endl;
-					++nfds;
-                } else {
-					// Handling data on established client connections
-                    char buffer[1024];
-                    ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer) - 1);
-					 // Only disconnect on actual read errors
-                    if (bytes_read < 0) {
-						if (errno != EAGAIN && errno != EWOULDBLOCK) {
-							std::cout << "[Zorg] Disconnecting client: " << fds[i].fd << std::endl;
-							for (auto& client : _clients)
-							{
-								if(client.getClientFd() == fds[i].fd){
-									disconnectClient(client, "Connection error");
-									cleanupFd(fds, nfds, i);
-									--i;
-									break;
-								}
-							}
-						}
-						continue;
-					} else if (bytes_read == 0) {
-						// Client closed connection
-						std::cout << "[Zorg] Client closed connection: " << fds[i].fd << std::endl;
-						for (auto& client : _clients) {
-							if(client.getClientFd() == fds[i].fd){
-								disconnectClient(client, "Client closed connection");
-								cleanupFd(fds, nfds, i);
-								--i;
-								break;
-							}
-						}
-					} else {
-						buffer[bytes_read] = '\0';
-						std::string receivedData(buffer);
-						//debugPrintBytes(buffer, bytes_read);
-						// Identify which client sent the message using the fd
-
-						auto client = std::find_if(_clients.begin(), _clients.end(), [fd = fds[i].fd](const Client& client) { return client.getClientFd() == fd; });
-						// Append new data to client's buffer
-						client->appendBuffer(buffer, bytes_read);
-						client->setLastActivity();
-
-						// Only process if we have a complete message
-						if (client->hasCompleteMessage()) {
-							std::string receivedData = client->getAndClearBuffer();
-							std::vector<std::string> messages = splitMessages(receivedData);
-							if (!client->getRegistration()) {
-								int grant_access = connectionHandshake(*client, messages, fds[i].fd); // Pass individual message
-								if (!grant_access) {
-									disconnectClient(*client, "Invalid Password");
-									cleanupFd(fds, nfds, i);
-									--i;
-									break;
-								}
-							} else {
-								for(const std::string& message : messages) {
-									std::cout << client->getClientFd() << " >> " << message << std::endl;
-									handleMessage(*client, message);
-								}
-							}
-						}
+		for (size_t i = 0; i < _poll_fds.size(); ++i) {
+			// Check for errors or hangup
+			if (_poll_fds[i].revents & (POLLERR | POLLHUP)) {
+				if (_poll_fds[i].fd != _serverSocket) {
+					auto client_it = std::find_if(_clients.begin(), _clients.end(),
+						[fd = _poll_fds[i].fd](const Client& c) { return c.getClientFd() == fd; });
+					if (client_it != _clients.end()) {
+						disconnectClient(*client_it, "Connection error");
 					}
+					cleanupFd(i);
+					--i;
+					continue;
+				}
+			}
+
+			if (!(_poll_fds[i].revents & POLLIN)) {
+				continue;
+			}
+
+			if (_poll_fds[i].fd == _serverSocket) {
+				handleNewConnection();
+			} else {
+				if (!handleClientData(i)) {
+					cleanupFd(i);
+					--i;
 				}
 			}
 		}

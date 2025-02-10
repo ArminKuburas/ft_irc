@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/04 11:27:53 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/10 11:02:28 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/10 13:37:37 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,17 +54,21 @@ using CommandHelper = std::function<void(Client&, const std::string&)>;
 class Server
 {
 	private:
+		static const int MAX_CLIENTS = 1024;
 		int										_port;
 		std::string								_name = SERVER_NAME;
 		std::string								_password;
 		int										_serverSocket;
 		struct sockaddr_in						_serverAddr;
+		std::vector<struct pollfd>				_poll_fds;
 		std::vector<Client>						_clients;
 		std::map<std::string, Channel> 			_channels;
 		std::map<std::string, CommandHelper>	_commands;
 		void disconnectClient(Client& client, const std::string& reason);
-		void cleanupFd(struct pollfd* fds, int& nfds, int index);
+		void cleanupFd(int fd_index);
 		void Help(Client& client, const std::string& message);
+		bool handleNewConnection();
+		bool handleClientData(size_t index);
 		
 	public:
 		// constructor
