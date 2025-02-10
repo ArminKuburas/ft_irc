@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:48 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/06 14:54:37 by fdessoy-         ###   ########.fr       */
+/*   Updated: 2025/02/07 10:43:25 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -168,4 +168,18 @@ bool Client::getAwaitingPong() const {
 
 time_t Client::getPingTime() const{
 	return _pingTime;
+}
+
+void Client::appendBuffer(const char* buffer, size_t length){
+	_messageBuffer.append(buffer, length);
+}
+
+bool Client::hasCompleteMessage() const {
+	return _messageBuffer.find('\n') != std::string::npos;
+}
+
+std::string Client::getAndClearBuffer(){
+	std::string message =  _messageBuffer;
+	_messageBuffer.clear();
+	return message;
 }
