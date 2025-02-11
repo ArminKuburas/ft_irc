@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:45 by akuburas          #+#    #+#             */
-/*   Updated: 2025/01/29 21:29:33 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/02/11 18:03:06 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 		close(irc_server.getSocket());
 		return (EXIT_FAILURE);
 	}
-	if (listen(irc_server.getSocket(), 5) == -1)
+	if (listen(irc_server.getSocket(), 100) == -1)
 	{
 		perror("listening failed");
 		std::cout << "Error: " << errno << std::endl;
