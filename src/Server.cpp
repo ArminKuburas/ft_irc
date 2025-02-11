@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/11 03:01:26 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/11 03:32:09 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -453,6 +453,7 @@ void Server::SendToClient(Client& client, const std::string& message)
 		if (bytes_sent < 0)
 		{
 			std::cerr << "[Zorg] Send failed. Error code: " << errno << " - " << strerror(errno) << std::endl;
+			std::cerr << "[Zorg] Send failed. Original string was: " << message.c_str() << std::endl;
 		}
 		else
 		{
