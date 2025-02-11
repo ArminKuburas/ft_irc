@@ -63,7 +63,7 @@ public:
     void Run();
     void AddClient(int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen);
     void BroadcastMessage(std::string& message);
-    void SendToClient(std::shared_ptr<Client>& client, const std::string& message);
+	void SendToClient(const std::shared_ptr<Client>& client, const std::string& message);
     void SendToChannel(const std::string& channelName, const std::string& message, std::shared_ptr<Client> sender, int code);
     void handleMessage(std::shared_ptr<Client>& client, const std::string& message);
     int connectionHandshake(std::shared_ptr<Client>& client, std::vector<std::string> messages, int fd);

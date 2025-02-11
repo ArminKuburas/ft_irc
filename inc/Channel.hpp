@@ -33,7 +33,7 @@ public:
     const std::string getName() const;
     const std::string getKey() const;
     const std::string getTopic() const;
-    const std::set<std::shared_ptr<Client>> getMembers() const;
+	const std::set<std::shared_ptr<Client>>& getMembers() const;
     const std::set<std::shared_ptr<Client>> getOperators() const;
     const bool& getIsPrivate() const;
     const bool& getIsInviteOnly() const;
