@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:38 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/10 14:07:38 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/11 03:01:26 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -160,7 +160,6 @@ bool Server::handleNewConnection() {
 bool Server::handleClientData(size_t index) {
 	char buffer[1024];
 	int fd = _poll_fds[index].fd;
-	
 	ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
 	
 	if (bytes_read < 0) {
@@ -187,6 +186,11 @@ bool Server::handleClientData(size_t index) {
 	}
 
 	// Handle received data
+	std::cout << "[" + _name + "] Received " << bytes_read << " bytes from client " << fd << std::endl;
+	if (bytes_read >= static_cast<ssize_t>(sizeof(buffer) - 1)) {
+		std::cerr << "Received more data than buffer size, truncating" << std::endl;
+		bytes_read = sizeof(buffer) - 1;
+	}
 	buffer[bytes_read] = '\0';
 	auto client_it = std::find_if(_clients.begin(), _clients.end(),
 		[fd](const Client& c) { return c.getClientFd() == fd; });
@@ -197,6 +201,14 @@ bool Server::handleClientData(size_t index) {
 
 		if (client_it->hasCompleteMessage()) {
 			std::string data = client_it->getAndClearBuffer();
+			if (data.size() > 4096)
+			{
+				std::cerr << "[" + _name + "] Warning: Unusually large message recieved (size: " << data.size() << " bytes)" << std::endl;
+				return true;
+			}
+			std::cout << "[" + _name + "] Received message from client " << fd << ": " << data << std::endl;
+			std::cout << "[" + _name + "] Splitting messages" << std::endl;
+			std::cout << "[" + _name + "] data size: " << data.size() << std::endl;
 			std::vector<std::string> messages = splitMessages(data);
 			
 			if (!client_it->getRegistration()) {
@@ -399,6 +411,11 @@ void Server::BroadcastMessage(std:: string &messasge)
 
 void Server::handleMessage(Client& client, const std::string& message)
 {
+	if (message.empty())
+	{
+		std::cerr << "[Zorg] Empty message received from client " << client.getClientFd() << client.getNick() << std::endl;
+		return;
+	}
 	std::istringstream stream(message);
 	std::string command;
 	stream >> command;
@@ -416,6 +433,16 @@ void Server::handleMessage(Client& client, const std::string& message)
 
 void Server::SendToClient(Client& client, const std::string& message)
 {
+	if (message.empty())
+	{
+		std::cerr << "[Zorg] Empty message to send to client " << client.getClientFd() << std::endl;
+		return;
+	}
+	if (message.size() > 512)
+	{
+		std::cerr << "[Zorg] Message too long to send to client " << client.getClientFd() << std::endl;
+		return;
+	}
 	if (client.getClientFd() == -1) {
 		std::cerr << "[Zorg] Invalid file descriptor for client " << client.getClientFd() << std::endl;
 		return;
