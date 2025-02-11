@@ -1,27 +1,17 @@
-/* ****************************************************************************/
-/*  ROFL:ROFL:ROFL:ROFL 													  */
-/*          _^___      										 				  */
-/* L     __/   [] \    										 			      */
-/* LOL===__        \   			MY ROFLCOPTER GOES BRRRRRR				  	  */
-/* L      \________]  					by fdessoy-				  			  */
-/*         I   I     			(fdessoy-@student.hive.fi)				  	  */
-/*        --------/   										  				  */
-/* ****************************************************************************/
-
 #include "../inc/Channel.hpp"
 
-Channel::Channel(const std::string &name, const std::string &key, const std::string &topic, bool IsPrivate, bool isInviteOnly )
+Channel::Channel(const std::string &name, const std::string &key, const std::string &topic, bool IsPrivate, bool isInviteOnly)
 {
-	uint64_t largeNumber = UINT64_C(18446744073709551615); // UINT64_C ensures portability for other architectures
-	setMaxMembers(largeNumber);
-	setName(name);
-	setKey(key);
-	if (!(topic == ""))
-		setTopic(topic, "none");
-	setPrivate(IsPrivate);
-	setInviteOnly(isInviteOnly);
-	_topic = topic;
-	_hasMemberLimit = false;
+    uint64_t largeNumber = UINT64_C(18446744073709551615);
+    setMaxMembers(largeNumber);
+    setName(name);
+    setKey(key);
+    if (!(topic == ""))
+        setTopic(topic, "none");
+    setPrivate(IsPrivate);
+    setInviteOnly(isInviteOnly);
+    _topic = topic;
+    _hasMemberLimit = false;
 }
 
 Channel::~Channel()
@@ -31,252 +21,233 @@ Channel::~Channel()
 // Getters
 const std::string Channel::getName() const
 {
-	return (_name);
+    return (_name);
 }
 
 const std::string Channel::getKey() const
 {
-	return (_key);
+    return (_key);
 }
 
 const std::string Channel::getTopic() const
 {
-	return (_topic);
+    return (_topic);
 }
 
-const std::set<Client*> Channel::getMembers() const
-{
-	return (_members);
+const std::set<std::shared_ptr<Client>>& Channel::getMembers() const {
+    return (_members);
 }
 
-const std::set<Client*> Channel::getOperators() const
+const std::set<std::shared_ptr<Client>> Channel::getOperators() const
 {
-	return (_operators);
+    return (_operators);
 }
 
 const bool& Channel::getIsPrivate() const
 {
-	return (_isPrivate);
+    return (_isPrivate);
 }
 
 const bool& Channel::getIsInviteOnly() const
 {
-	return (_isInviteOnly);
+    return (_isInviteOnly);
 }
 
 std::string Channel::getModes() const
 {
-	std::string modes;
-	for (char mode : this->_channelModes)
-	{
-		modes += mode;
-	}
-	return (modes);
+    std::string modes;
+    for (char mode : this->_channelModes)
+    {
+        modes += mode;
+    }
+    return (modes);
 }
 
 bool Channel::getTopicFlag() const
 {
-	return (_operatorSetsTopic);
+    return (_operatorSetsTopic);
 }
 
-uint64_t	Channel::getNumberMaxMembers() const
+uint64_t Channel::getNumberMaxMembers() const
 {
-	return (_maxMembers);
+    return (_maxMembers);
 }
 
-bool	Channel::getMaxMembers() const
+bool Channel::getMaxMembers() const
 {
-	return (_hasMemberLimit);
+    return (_hasMemberLimit);
 }
 
 uint64_t Channel::getNbMembers() const
 {
-	return static_cast<uint64_t>(_members.size());
+    return static_cast<uint64_t>(_members.size());
 }
 
 // Setters
-void Channel::setName( const std::string& name )
+void Channel::setName(const std::string& name)
 {
-	_name = name;
+    _name = name;
 }
 
-void Channel::setKey( const std::string& key )
+void Channel::setKey(const std::string& key)
 {
-	_key = key;
+    _key = key;
 }
 
-void Channel::setTopic( const std::string& newTopic, const std::string& setter)
+void Channel::setTopic(const std::string& newTopic, const std::string& setter)
 {
-	_topic = newTopic;
-	_topicSetBy = setter;
-	_topicSetAt = time(NULL);
+    _topic = newTopic;
+    _topicSetBy = setter;
+    _topicSetAt = time(NULL);
 }
 
-std::string	Channel::getSetter() const
+std::string Channel::getSetter() const
 {
-	return (_topicSetBy);
+    return (_topicSetBy);
 }
 
 time_t Channel::getTopicTime() const
 {
-	return (_topicSetAt);
+    return (_topicSetAt);
 }
 
-void Channel::setPrivate( bool isPrivate )
+void Channel::setPrivate(bool isPrivate)
 {
-	_isPrivate = isPrivate;
+    _isPrivate = isPrivate;
 }
 
-void Channel::setInviteOnly( bool isInviteOnly )
+void Channel::setInviteOnly(bool isInviteOnly)
 {
-	_isInviteOnly = isInviteOnly;
+    _isInviteOnly = isInviteOnly;
 }
 
-void Channel::setTopicFlag( bool operatorSetsTopic )
+void Channel::setTopicFlag(bool operatorSetsTopic)
 {
-	_operatorSetsTopic = operatorSetsTopic;
+    _operatorSetsTopic = operatorSetsTopic;
 }
 
-void Channel::limitMaxMembers( uint64_t limit )
+void Channel::limitMaxMembers(uint64_t limit)
 {
-	_maxMembers = limit;
+    _maxMembers = limit;
 }
 
-void Channel::setMaxMembers( bool active )
+void Channel::setMaxMembers(bool active)
 {
-	_hasMemberLimit = active;
+    _hasMemberLimit = active;
 }
 
 void Channel::setModes(char mode)
 {
-	this->_channelModes.insert(mode);
-	if (mode == 'i')
-		this->setInviteOnly(true);
-	else if (mode == 't')
-		this->setTopicFlag(true);
-	else if (mode == 'l')
-		this->setMaxMembers(true);
+    this->_channelModes.insert(mode);
+    if (mode == 'i')
+        this->setInviteOnly(true);
+    else if (mode == 't')
+        this->setTopicFlag(true);
+    else if (mode == 'l')
+        this->setMaxMembers(true);
 }
 
 // Membership management
-void Channel::addMember(Client* client)
+void Channel::addMember(std::shared_ptr<Client> client)
 {
-	if (_members.empty())
-		_operators.emplace(client);
-	_members.emplace(client);
+    if (_members.empty())
+        _operators.insert(client);
+    _members.insert(client);
 }
 
-bool Channel::removeMember(Client* client)
+bool Channel::removeMember(std::shared_ptr<Client> client)
 {
-	auto it = _members.find(client);
-	if (it != _members.end())
-	{
-		_members.erase(it);
-		return (true);
-	}
-	return (false);
+    auto it = _members.find(client);
+    if (it != _members.end())
+    {
+        _members.erase(it);
+        return (true);
+    }
+    return (false);
 }
 
-bool Channel::addOperator(Client* channelOperator, Client* target)
+bool Channel::addOperator(std::shared_ptr<Client> channelOperator, std::shared_ptr<Client> target)
 {
-	if (!this->noOperators())
-	{
-		if (!this->isOperator(channelOperator) || !this->isMember(channelOperator)
-			|| !this->isMember(target) || this->isOperator(target))
-		{
-			return (false);
-		}
-	}
-	_operators.emplace(target);
-	return (true);
+    if (!this->noOperators())
+    {
+        if (!this->isOperator(channelOperator) || !this->isMember(channelOperator)
+            || !this->isMember(target) || this->isOperator(target))
+        {
+            return (false);
+        }
+    }
+    _operators.insert(target);
+    return (true);
 }
 
-bool	Channel::removeOperator(Client* channelOperator, Client* target)
+bool Channel::removeOperator(std::shared_ptr<Client> channelOperator, std::shared_ptr<Client> target)
 {
-	if (target == nullptr)
-	{
-		if (!this->isOperator(channelOperator) || !this->isMember(channelOperator))
-			return (false);
-		_operators.erase(channelOperator);
-		return (true);
-	}
-	if (!this->isOperator(channelOperator) || !this->isMember(channelOperator)
-		|| !this->isMember(target) || !this->isOperator(target))
-		return (false);
-	_operators.erase(target);
-	return (true);
+    if (target == nullptr)
+    {
+        if (!this->isOperator(channelOperator) || !this->isMember(channelOperator))
+            return (false);
+        _operators.erase(channelOperator);
+        return (true);
+    }
+    if (!this->isOperator(channelOperator) || !this->isMember(channelOperator)
+        || !this->isMember(target) || !this->isOperator(target))
+        return (false);
+    _operators.erase(target);
+    return (true);
 }
 
-bool	Channel::changeKey( Client* channelOperator, std::string newKey )
+bool Channel::changeKey(std::shared_ptr<Client> channelOperator, std::string newKey)
 {
-	if (!this->isMember(channelOperator) || !this->isOperator(channelOperator)
-		|| newKey == this->_key)
-		return (false);
-	this->setKey(newKey);
-	return (true);
+    if (!this->isMember(channelOperator) || !this->isOperator(channelOperator)
+        || newKey == this->_key)
+        return (false);
+    this->setKey(newKey);
+    return (true);
 }
 
 // Utility
-bool	Channel::isMember(Client* client) const
+bool Channel::isMember(std::shared_ptr<Client> client) const
 {
-	for (auto it = _members.begin(); it != _members.end(); ++it)
-	{
-		Client* possibleMember = *it;
-
-		if ((possibleMember->getClientFd() == client->getClientFd()))
-			return (true);
-	}
-	return (false);
+    return _members.find(client) != _members.end();
 }
 
-bool	Channel::isOperator(Client* client) const
+bool Channel::isOperator(std::shared_ptr<Client> client) const
 {
-	for (auto it = _operators.begin(); it != _operators.end(); ++it)
-	{
-		Client* possibleOperator = *it;
-		
-		if (possibleOperator->getClientFd() == client->getClientFd())
-			return (true);
-	}
-	return (false);
+    return _operators.find(client) != _operators.end();
 }
 
-bool	Channel::isChannelEmpty() const
+bool Channel::isChannelEmpty() const
 {
-	if (_members.empty())
-		return (true);
-	return (false);
+    return _members.empty();
 }
 
-bool	Channel::noOperators() const
+bool Channel::noOperators() const
 {
-	if (_operators.empty())
-		return (true);
-	return (false);
+    return _operators.empty();
 }
 
-bool	Channel::hasMode(char mode) const
+bool Channel::hasMode(char mode) const
 {
-	return (this->_channelModes.find(mode) != this->_channelModes.end());
+    return (this->_channelModes.find(mode) != this->_channelModes.end());
 }
 
-void	Channel::removeMode(char mode)
+void Channel::removeMode(char mode)
 {
-	_channelModes.erase(mode);
-	if (mode == 'i')
-		this->setInviteOnly(false);
-	else if (mode == 't')
-		this->setTopicFlag(false);
-	else if (mode == 'l')
-		this->setMaxMembers(false);
+    _channelModes.erase(mode);
+    if (mode == 'i')
+        this->setInviteOnly(false);
+    else if (mode == 't')
+        this->setTopicFlag(false);
+    else if (mode == 'l')
+        this->setMaxMembers(false);
 }
 
-Client*	Channel::retrieveClient(std::string username)
+std::shared_ptr<Client> Channel::retrieveClient(std::string username)
 {
-	for (Client *member : _members)
-	{
-		if (member->getNick() == username)
-			return (member);
-	}
-	return (nullptr);
+    for (const auto& member : _members)
+    {
+        if (member->getNick() == username)
+            return member;
+    }
+    return nullptr;
 }

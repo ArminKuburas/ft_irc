@@ -1,25 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   Server.hpp                                         :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/02/04 11:27:53 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/10 13:37:37 by pmarkaid         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-/* ****************************************************************************/
-/*  ROFL:ROFL:ROFL:ROFL 													  */
-/*          _^___      										 				  */
-/* L     __/   [] \    										 			      */
-/* LOL===__        \   			MY ROFLCOPTER GOES BRRRRRR				  	  */
-/* L      \________]  					by fdessoy-				  			  */
-/*         I   I     			(fdessoy-@student.hive.fi)				  	  */
-/*        --------/   										  				  */
-/* ****************************************************************************/
-
 #pragma once
 
 #include <iostream>
@@ -32,13 +10,13 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <vector>
-#include "Client.hpp"
 #include <algorithm>
 #include <functional>
 #include <map>
 #include <sstream>
 #include <ctime>
-
+#include <memory>
+#include "Client.hpp"
 #include "Channel.hpp"
 
 #define SERVER_NAME "Zorg"
@@ -49,81 +27,71 @@
 class Client;
 class Channel;
 
-using CommandHelper = std::function<void(Client&, const std::string&)>;
+using CommandHelper = std::function<void(std::shared_ptr<Client>&, const std::string&)>;
 
-class Server
-{
-	private:
-		static const int MAX_CLIENTS = 1024;
-		int										_port;
-		std::string								_name = SERVER_NAME;
-		std::string								_password;
-		int										_serverSocket;
-		struct sockaddr_in						_serverAddr;
-		std::vector<struct pollfd>				_poll_fds;
-		std::vector<Client>						_clients;
-		std::map<std::string, Channel> 			_channels;
-		std::map<std::string, CommandHelper>	_commands;
-		void disconnectClient(Client& client, const std::string& reason);
-		void cleanupFd(int fd_index);
-		void Help(Client& client, const std::string& message);
-		bool handleNewConnection();
-		bool handleClientData(size_t index);
-		
-	public:
-		// constructor
-		Server(int port, std::string password);
-		
-		// destructor
-		~Server();
+class Server {
+private:
+    static const int MAX_CLIENTS = 1024;
+    int _port;
+    std::string _name = SERVER_NAME;
+    std::string _password;
+    int _serverSocket;
+    struct sockaddr_in _serverAddr;
+    std::vector<struct pollfd> _poll_fds;
+    std::vector<std::shared_ptr<Client>> _clients;
+    std::map<std::string, std::shared_ptr<Channel>> _channels;
+    std::map<std::string, CommandHelper> _commands;
 
-		// getters
-		int									getPort();
-		int									getSocket();
-		const sockaddr_in&					getServerAddr() const;
-		// pollfd		*getFdPoll();
+    void disconnectClient(std::shared_ptr<Client>& client, const std::string& reason);
+    void cleanupFd(int fd_index);
+    void Help(std::shared_ptr<Client>& client, const std::string& message);
+    bool handleNewConnection();
+    bool handleClientData(size_t index);
 
-		// setters
-		void								setSocket( int socket );
-		void								setServerAddr();
+public:
+    Server(int port, std::string password);
+    ~Server();
 
-		// public methods
-		void								portConversion( std::string port );
-		void								Run();
-		void								AddClient( int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen );
-		void								BroadcastMessage(std:: string &messasge);
-		void								SendToClient(Client& client, const std::string& message);
-		void								SendToChannel(const std::string& channelName, const std::string& message, Client* sender, int code);
-		void								handleMessage(Client& client, const std::string& message);
-		int									connectionHandshake(Client& client, std::vector<std::string> messages, int fd);
-		void								ModeHelperChannel(Client &client, std::map<std::string, Channel>::iterator it, char mode, bool adding, std::string code);
-		bool 								MultipleChannels( const std::string& message );
-		std::map<std::string, std::string>	MapChannels(const std::string& message );
+    int getPort();
+    int getSocket();
+    const sockaddr_in& getServerAddr() const;
 
-		// Command handlers
-		void Ping(Client& client, const std::string& message);
-		void Pong(Client& client, const std::string& message);
-		void Cap(Client& client, const std::string& message);
-		void Nick(Client& client, const std::string& message);
-		void User(Client& client, const std::string& message);
-		void Mode(Client& client, const std::string& message);
-		void Join(Client& client, const std::string& message);
-		void Quit(Client& client, const std::string& message);
-		void Priv(Client& client, const std::string& message);
-		int  Pass(Client& client, const std::string& message);
-		void Stats(Client& client, const std::string& message);
-		void Whois(Client& client, const std::string& message);
-    	void Part(Client& client, const std::string& message);
-		void Topic(Client& client, const std::string& message);
-		void Invite(Client& client, const std::string& message);
-		void Kick(Client& client, const std::string& message);
-		void Who(Client& client, const std::string& message);
-		void List(Client& client, const std::string& message);
+    void setSocket(int socket);
+    void setServerAddr();
 
+    void portConversion(std::string port);
+    void Run();
+    void AddClient(int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen);
+    void BroadcastMessage(std::string& message);
+	void SendToClient(const std::shared_ptr<Client>& client, const std::string& message);
+    void SendToChannel(const std::string& channelName, const std::string& message, std::shared_ptr<Client> sender, int code);
+    void handleMessage(std::shared_ptr<Client>& client, const std::string& message);
+    int connectionHandshake(std::shared_ptr<Client>& client, std::vector<std::string> messages, int fd);
+    void ModeHelperChannel(std::shared_ptr<Client>& client, std::map<std::string, std::shared_ptr<Channel>>::iterator it, char mode, bool adding, std::string code);
+    bool MultipleChannels(const std::string& message);
+    std::map<std::string, std::string> MapChannels(const std::string& message);
 
-		void 								initializeCommandHandlers();
-		std::vector<std::string>			splitMessages(const std::string& message);
-		void 								checkClientTimeouts();
+    // Command handlers
+    void Ping(std::shared_ptr<Client>& client, const std::string& message);
+    void Pong(std::shared_ptr<Client>& client, const std::string& message);
+    void Cap(std::shared_ptr<Client>& client, const std::string& message);
+    void Nick(std::shared_ptr<Client>& client, const std::string& message);
+    void User(std::shared_ptr<Client>& client, const std::string& message);
+    void Mode(std::shared_ptr<Client>& client, const std::string& message);
+    void Join(std::shared_ptr<Client>& client, const std::string& message);
+    void Quit(std::shared_ptr<Client>& client, const std::string& message);
+    void Priv(std::shared_ptr<Client>& client, const std::string& message);
+    int Pass(std::shared_ptr<Client>& client, const std::string& message);
+    void Stats(std::shared_ptr<Client>& client, const std::string& message);
+    void Whois(std::shared_ptr<Client>& client, const std::string& message);
+    void Part(std::shared_ptr<Client>& client, const std::string& message);
+    void Topic(std::shared_ptr<Client>& client, const std::string& message);
+    void Invite(std::shared_ptr<Client>& client, const std::string& message);
+    void Kick(std::shared_ptr<Client>& client, const std::string& message);
+    void Who(std::shared_ptr<Client>& client, const std::string& message);
+    void List(std::shared_ptr<Client>& client, const std::string& message);
 
-
+    void initializeCommandHandlers();
+    std::vector<std::string> splitMessages(const std::string& message);
+    void checkClientTimeouts();
 };
