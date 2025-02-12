@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/11 22:08:23 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/12 08:56:39 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/12 09:59:48 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -393,8 +393,12 @@ void Server::Nick(std::shared_ptr<Client>& client, const std::string& message) {
             valid_nickname = false;
         }
     }
-    if(!valid_nickname) {
-        SendToClient(client, ":" + _name + " 432 " + client->getNick() + " :Erroneous nickname\r\n");
+    if(!valid_nickname)
+    {
+        if (!client->getNick().empty())
+            SendToClient(client, ":" + _name + " 432 " + client->getNick() + " :Erroneous nickname\r\n");
+        else
+            SendToClient(client, ":" + _name + " 432 " + "*" + " :Erroneous nickname\r\n");
         return;
     }
 
