@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/11 22:08:23 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/12 08:23:22 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/12 08:56:39 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -687,20 +687,36 @@ void Server::Join(std::shared_ptr<Client>& client, const std::string& message) {
             SendToClient(client, ":" + _name + " 476 " + client->getNick() + " " + channel + ":invalid channel name" + "\r\n");
             return;
         }
+		// Convert requested channel to lowercase for comparison
+		std::string lowerChannel = channel;
+		std::transform(lowerChannel.begin(), lowerChannel.end(), lowerChannel.begin(), ::tolower);
 
+		// Seach for an existing channel case-insensitively
+		std::string actualChannelName = channel;
+		for (const auto& existingChannel : _channels)
+		{
+			std::string existingLower = existingChannel.first;
+			std::transform(existingLower.begin(), existingLower.end(), existingLower.begin(), ::tolower);
+			if (existingLower == lowerChannel)
+			{
+				actualChannelName = existingChannel.first;
+				break;
+			}
+		}
+			
         // Create new channel if it doesn't exist
-        auto [it, inserted] = _channels.try_emplace(channel, std::make_shared<Channel>(channel, key, "", false, false));
+        auto [it, inserted] = _channels.try_emplace(actualChannelName, std::make_shared<Channel>(channel, key, "", false, false));
 
         // Check key
         if (!it->second->getKey().empty() && it->second->getKey() != key) {
-            SendToClient(client, ":" + _name + " 475 " + client->getNick() + " " + channel + " :bad channel key\r\n");
+            SendToClient(client, ":" + _name + " 475 " + client->getNick() + " " + actualChannelName + " :bad channel key\r\n");
             return;
         }
 
         // Check member limit
         if (it->second->getMaxMembers()) {
             if (it->second->getNbMembers() >= it->second->getNumberMaxMembers()) {
-                SendToClient(client, ":" + _name + " 471 " + client->getNick() + " " + channel + " :channel is full\r\n");
+                SendToClient(client, ":" + _name + " 471 " + client->getNick() + " " + actualChannelName + " :channel is full\r\n");
                 return;
             }
         }
@@ -714,7 +730,7 @@ void Server::Join(std::shared_ptr<Client>& client, const std::string& message) {
                      " JOIN " + it->second->getName() + "\r\n", client, NORMAL_MSG);
 
         if (it->second->isMember(client)) {
-            SendToClient(client, ":" + client->getNick() + " JOIN " + channel + "\r\n");
+            SendToClient(client, ":" + client->getNick() + " JOIN " + actualChannelName + "\r\n");
             
             // Build names list
             std::string namesList;
@@ -725,14 +741,14 @@ void Server::Join(std::shared_ptr<Client>& client, const std::string& message) {
                     namesList += member->getNick() + " ";
             }
 
-            SendToClient(client, ":" + _name + " 353 " + client->getNick() + " = " + channel + " :" + namesList + "\r\n");
-            SendToClient(client, ":" + _name + " 366 " + client->getNick() + " " + channel + " :End of /NAMES list.\r\n");
+            SendToClient(client, ":" + _name + " 353 " + client->getNick() + " = " + actualChannelName + " :" + namesList + "\r\n");
+            SendToClient(client, ":" + _name + " 366 " + client->getNick() + " " + actualChannelName + " :End of /NAMES list.\r\n");
 
             // Send topic information
             if (!it->second->getTopic().empty())
 			{
-                SendToClient(client, ":" + _name + " 332 " + client->getNick() + " " + channel + " :" + it->second->getTopic() + "\r\n");
-                SendToClient(client, ":" + _name + " 333 " + client->getNick() + " " + channel + " " + it->second->getSetter() + " " + 
+                SendToClient(client, ":" + _name + " 332 " + client->getNick() + " " + actualChannelName + " :" + it->second->getTopic() + "\r\n");
+                SendToClient(client, ":" + _name + " 333 " + client->getNick() + " " + actualChannelName + " " + it->second->getSetter() + " " + 
                            std::to_string(it->second->getTopicTime()) + "\r\n");
             }
         }
