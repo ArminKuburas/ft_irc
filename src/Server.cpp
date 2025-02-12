@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/11 22:08:23 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/12 09:59:48 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/12 10:19:07 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1152,7 +1152,7 @@ const sockaddr_in& Server::getServerAddr() const {
 }
 
 void Server::setServerAddr() {
-    memset(&this->_serverAddr, 0, sizeof(this->_serverAddr));
+    std::memset(&this->_serverAddr, 0, sizeof(this->_serverAddr));
     this->_serverAddr.sin_family = AF_INET;
     this->_serverAddr.sin_port = htons(this->_port);
     this->_serverAddr.sin_addr.s_addr = INADDR_ANY;
