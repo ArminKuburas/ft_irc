@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Server.cpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/02/11 22:08:23 by akuburas          #+#    #+#             */
+/*   Updated: 2025/02/12 08:23:22 by akuburas         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "../inc/Server.hpp"
 
 Server::Server(int port, std::string password) {
@@ -125,6 +137,7 @@ bool Server::handleClientData(size_t index) {
                 std::cerr << "[" + _name + "] Warning: Unusually large message received (size: " << data.size() << " bytes)" << std::endl;
                 return true;
             }
+			std::cout << fd << " >> " << data;
             std::vector<std::string> messages = splitMessages(data);
             
             if (!(*client_it)->getRegistration()) {
@@ -183,27 +196,21 @@ void Server::Run() {
                 }
             }
 
-            if (!(_poll_fds[i].revents & POLLIN)) {
+            if (!(_poll_fds[i].revents & POLLIN))
+			{
                 continue;
             }
 
-            if (_poll_fds[i].fd == _serverSocket) {
-                try {
-                    handleNewConnection();
-                }
-                catch (std::exception& e) {
-                    std::cerr << "handle new connection error. what is: " << e.what() << std::endl;
-                }
+            if (_poll_fds[i].fd == _serverSocket)
+			{
+                handleNewConnection();
             }
-            else {
-                try {
-                    if (!handleClientData(i)) {
+            else
+			{
+                if (!handleClientData(i))
+				{
                         cleanupFd(i);
                         --i;
-                    }
-                }
-                catch (std::exception& e) {
-                    std::cerr << "handle client data error. what is: " << e.what() << std::endl;
                 }
             }
         }
@@ -258,23 +265,17 @@ void Server::SendToClient(const std::shared_ptr<Client>& client, const std::stri
         std::cerr << "[Zorg] Invalid file descriptor for client " << client->getClientFd() << std::endl;
         return;
     }
-    try {
-        ssize_t bytes_sent = send(client->getClientFd(), message.c_str(), message.length(), 0);
-        if (bytes_sent < 0) {
-            std::cerr << "[Zorg] Send failed. Error code: " << errno << " - " << strerror(errno) << std::endl;
-            std::cerr << "[Zorg] Send failed. Original string was: " << message.c_str() << std::endl;
-        }
-        else {
-            std::cout << client->getClientFd() << " << " << message;
-        }
-        if (bytes_sent != static_cast<ssize_t>(message.size())) {
-            std::cerr << "[Zorg] Warning: Not all bytes were sent to " << client->getClientFd() << std::endl;
-        }
-    }
-    catch (std::exception& e) {
-        std::cerr << "Exception caught: " << e.what() << std::endl;
-        std::cerr << "Original string was: " << message << std::endl;
-    }
+	ssize_t bytes_sent = send(client->getClientFd(), message.c_str(), message.length(), 0);
+	if (bytes_sent < 0) {
+		std::cerr << "[Zorg] Send failed. Error code: " << errno << " - " << strerror(errno) << std::endl;
+		std::cerr << "[Zorg] Send failed. Original string was: " << message.c_str() << std::endl;
+	}
+	else {
+		std::cout << client->getClientFd() << " << " << message;
+	}
+	if (bytes_sent != static_cast<ssize_t>(message.size())) {
+		std::cerr << "[Zorg] Warning: Not all bytes were sent to " << client->getClientFd() << std::endl;
+	}
 }
 
 void Server::SendToChannel(const std::string& channelName, const std::string& message, std::shared_ptr<Client> sender, int code) {
@@ -728,13 +729,11 @@ void Server::Join(std::shared_ptr<Client>& client, const std::string& message) {
             SendToClient(client, ":" + _name + " 366 " + client->getNick() + " " + channel + " :End of /NAMES list.\r\n");
 
             // Send topic information
-            if (!it->second->getTopic().empty()) {
+            if (!it->second->getTopic().empty())
+			{
                 SendToClient(client, ":" + _name + " 332 " + client->getNick() + " " + channel + " :" + it->second->getTopic() + "\r\n");
                 SendToClient(client, ":" + _name + " 333 " + client->getNick() + " " + channel + " " + it->second->getSetter() + " " + 
                            std::to_string(it->second->getTopicTime()) + "\r\n");
-            }
-            else {
-                SendToClient(client, ":" + _name + " 331 " + client->getNick() + " " + channel + " :No topic is set\r\n");
             }
         }
     }
@@ -879,11 +878,6 @@ void Server::Kick(std::shared_ptr<Client>& client, const std::string& message) {
     stream >> command >> channelNames >> usersToKick;
     std::getline(stream, comment);
 
-    if (!comment.empty() && comment[0] == ':')
-        comment = comment.substr(1);
-    else if (comment.empty())
-        comment = client->getNick();
-
     if (channelNames.empty() || usersToKick.empty()) {
         SendToClient(client, ":" + _name + " 476 " + client->getNick() + " " + channelNames + " :Invalid channel syntax\r\n");
         return;
@@ -943,11 +937,16 @@ void Server::Kick(std::shared_ptr<Client>& client, const std::string& message) {
                         " :They are not on that channel\r\n");
             continue;
         }
+		if (!comment.empty() && comment[0] == ' ' && comment[1] == ':' && comment.size() > 2)
+		{
+			comment = comment.substr(2);
+		}
+   		else
+        	comment = userToKick;
 
         std::string kickMessage = ":" + client->getNick() + "!" + client->getUser() + "@" + client->getHost() + 
                                 " KICK " + channelName + " " + userToKick + " :" + comment + "\r\n";
         SendToChannel(channelName, kickMessage, client, UNIVERSAL_MSG);
-        SendToClient(target, kickMessage);
         channel->removeMember(target);
 
         if (channel->isOperator(target)) {

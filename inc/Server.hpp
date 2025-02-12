@@ -52,23 +52,18 @@ public:
     Server(int port, std::string password);
     ~Server();
 
-    int getPort();
     int getSocket();
     const sockaddr_in& getServerAddr() const;
 
     void setSocket(int socket);
     void setServerAddr();
 
-    void portConversion(std::string port);
     void Run();
-    void AddClient(int clientFd, sockaddr_in clientAddr, socklen_t clientAddrLen);
-    void BroadcastMessage(std::string& message);
 	void SendToClient(const std::shared_ptr<Client>& client, const std::string& message);
     void SendToChannel(const std::string& channelName, const std::string& message, std::shared_ptr<Client> sender, int code);
     void handleMessage(std::shared_ptr<Client>& client, const std::string& message);
     int connectionHandshake(std::shared_ptr<Client>& client, std::vector<std::string> messages, int fd);
     void ModeHelperChannel(std::shared_ptr<Client>& client, std::map<std::string, std::shared_ptr<Channel>>::iterator it, char mode, bool adding, std::string code);
-    bool MultipleChannels(const std::string& message);
     std::map<std::string, std::string> MapChannels(const std::string& message);
 
     // Command handlers
