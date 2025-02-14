@@ -108,6 +108,6 @@ After authentication is done, as you can see, you can join channels with your fr
 
 ## Contributors
 
-- [Armin Kuburas](https://github.com/ArminKuburas/)
-- [Felipe Dessoy Caraballo](https://github.com/fjjdessoycaraballo)
-- [Pablo Markaide](https://github.com/pmarkaide)
+- [Armin Kuburas](https://github.com/ArminKuburas/) [Linkedin](https://www.linkedin.com/in/armin-kuburas-kub/) 
+- [Felipe Dessoy Caraballo](https://github.com/fjjdessoycaraballo) - [Linkedin](https://www.linkedin.com/in/fdessoy/)
+- [Pablo Markaide](https://github.com/pmarkaide) - [Linkedin](https://www.linkedin.com/in/pmarkaide/)
