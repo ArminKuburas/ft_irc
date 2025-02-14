@@ -20,6 +20,7 @@ If you are a user, you can either get into the server (if it is running) using `
 
 
 - Using `irssi`
+
 In terminal, type the following:
 ```bash
 irssi
@@ -64,6 +65,7 @@ There will be an authentication process running by itself as `irssi` and the ser
 From this point, you can create channels using `JOIN` and use `PRIVMSG` to message your friends inside the server!
 
 - Using `netcat`
+
 In terminal, type:
 ```bash
 $> netcat 127.0.0.1 6667
