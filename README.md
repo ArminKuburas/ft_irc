@@ -13,7 +13,7 @@ To start running a server, all you have to do is type:
 ```bash
 ./ircserv <port> <passoword>
 ```
-Our standard port for testing has been `6667`. However, we greatly advise you to research on ports to understand and select the appropriate port.
+Our standard port for testing has been `6667`. However, we greatly advise you to research on [ports](https://github.com/ArminKuburas/ft_irc/wiki/port) to understand and select the appropriate port.
 
 #### User side
 If you are a user, you can either get into the server (if it is running) using `irssi` or `netcat`:
