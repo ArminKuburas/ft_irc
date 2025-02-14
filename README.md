@@ -1,6 +1,10 @@
 # ft_irc
 
-Our project aims to build an IRC server that is irssi client compliant. In this server we allow multiple commands and users can message themselves. It is also possible to join the server by using `netcat`/`nc`. You can check this quick [video](https://www.youtube.com/watch?v=ZtNOcTy7Kqg) of our server in action. For more technical questions, you can first consult our [wiki](https://github.com/arminKuburas/ft_irc/wiki/) or open an issue.
+Our project aims to build an IRC server that is irssi client compliant. In this server we allow multiple commands and users can message themselves. It is also possible to join the server by using `netcat`/`nc`. You can check this quick [video](https://www.youtube.com/watch?v=ZtNOcTy7Kqg) of our server in action.
+
+## What is IRC?
+
+IRC stands for Internet Relay Channel. It is a form of communication between users that is a bit demanding on UX, but it is very efficient due to small size of bytes transferred between users. For more information, you can check our very informative [wiki](https://github.com/ArminKuburas/ft_irc/wiki) or open an issue.
 
 ## Usage
 
@@ -101,10 +105,6 @@ There is no specific order in which the authentication should occur, but it migh
 `USER` requires you to provide a `username`, `hostname`, `server_name`, and `realname`.
 
 After authentication is done, as you can see, you can join channels with your friends!
-
-## What is IRC?
-
-IRC stands for Internet Relay Channel. It is a form of communication between users that is a bit demanding on UX, but it is very efficient due to small size of bytes transferred between users. For more information, you can check our very informative [wiki](https://github.com/ArminKuburas/ft_irc/wiki).
 
 ## Contributors
 
