@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:45 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/18 15:30:37 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/18 16:07:28 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,7 @@ bool	isDigit(std::string str)
 
 bool	parsing(std::string port, std::string password)
 {
-	std::string usage = "usage: ./ircserv <port> <password>";
+	std::string usage = "Usage: ./ircserv <port> <password>";
 	if (password.empty())
 	{
 		std::cout << "Error: password cannot be empty" << std::endl;
@@ -59,7 +59,7 @@ bool	parsing(std::string port, std::string password)
 		std::cout << usage << std::endl;
 		return (false);
 	}
-	if (!isDigit(port))
+	if (!isDigit(port) || std::stoi(port) < 1 || std::stoi(port) > 65535)
 	{
 		std::cout << "Error: port must be only digits within range 1-65535" << std::endl;
 		std::cout << usage << std::endl;
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 {
 	if (argc != 3)
 	{
-		std::cout << "usage: ./ircserv <port> <password>" << std::endl;
+		std::cout << "Usage: ./ircserv <port> <password>" << std::endl;
 		return (EXIT_FAILURE);
 	}
 	std::string port = argv[1], password = argv[2];

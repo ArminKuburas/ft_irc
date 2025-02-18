@@ -28,5 +28,9 @@ def run_tests():
 
     # Case 5: Commonly used port (e.g., 22 for SSH)
     run_test(["./ircserv", "22", "password123"], "Error: Invalid port")
+    
+	# Case 6: An impossible port number
+    run_test(["./ircserv", "-1", "password123"], "Error: Invalid port")
+    run_test(["./ircserv", "65536", "password123"], "Error: Invalid port")
 
     print("\nAll tests completed.\n")
