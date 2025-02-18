@@ -1,3 +1,15 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    test_cases.py                                      :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2025/02/18 22:09:22 by akuburas          #+#    #+#              #
+#    Updated: 2025/02/18 22:09:23 by akuburas         ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
 import subprocess
 import time
 
@@ -50,4 +62,4 @@ def run_tests(base_dir, server_executable):
 	run_test([server_executable, "-1", "password123"], "Error: Invalid port", base_dir)
 	run_test([server_executable, "65536", "password123"], "Error: Invalid port", base_dir)
 
-	print("\nAll tests completed.\n")
+	print("\nAll starting tests completed.\n")
