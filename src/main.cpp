@@ -6,7 +6,7 @@
 /*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:45 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/11 18:03:06 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/02/18 15:30:37 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,7 +55,7 @@ bool	parsing(std::string port, std::string password)
 	} 
 	if (port.empty())
 	{
-		std::cout << "Error: cannot be empty" << std::endl;
+		std::cout << "Error: port cannot be empty" << std::endl;
 		std::cout << usage << std::endl;
 		return (false);
 	}
