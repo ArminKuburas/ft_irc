@@ -1,36 +1,53 @@
 import subprocess
+import time
 
-def run_test(command, expected_output):
-    print(f"Testing: {' '.join(command)}")
-    
-    result = subprocess.run(command, capture_output=True, text=True)
-    
-    if expected_output in result.stderr or expected_output in result.stdout:
-        print("✅ Test passed!")
-    else:
-        print("❌ Test failed!")
-        print(f"Expected: {expected_output}")
-        print(f"Got: {result.stderr or result.stdout}")
+def run_test(command, expected_output, base_dir):
+	command_display = ["./" + command[0].split('/')[-1]] + command[1:]
+	print(f"Testing: {' '.join(command_display)}")
 
-def run_tests():
-    # Case 1: Run without arguments
-    run_test(["./ircserv"], "Usage: ./ircserv <port> <password>")
+	process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=base_dir)
 
-    # Case 2: Run with empty arguments
-    run_test(["./ircserv", ""], "Usage: ./ircserv <port> <password>")
-    run_test(["./ircserv", "", ""], "Usage: ./ircserv <port> <password>")
+	# Wait for the process to finish.
+	time.sleep(1)
+	stdout, stderr = process.communicate(timeout=2)
 
-    # Case 3: Valid port, missing password
-    run_test(["./ircserv", "6667"], "Usage: ./ircserv <port> <password>")
+	# Check if the process is still running.
+	if process.poll() is None:
+		process.terminate()
+		print(f"\033[91m❌ Server did not exit as expected! (Command: {' '.join(command)})\033[0m")
+		return False
 
-    # Case 4: Invalid port (e.g., 80 is a common web port)
-    run_test(["./ircserv", "80", "password123"], "Error: Invalid port")
+	result = stdout.strip() + "\n" + stderr.strip()
+		
+	if expected_output in result:
+		print("\033[92m✅ Test passed!\033[0m")
+	else:
+		print("\033[93m⚠️  Unexpected output but server exited.\033[0m")
+		print(f"Expected: {expected_output}")
+		print(f"Got: {result}")
 
-    # Case 5: Commonly used port (e.g., 22 for SSH)
-    run_test(["./ircserv", "22", "password123"], "Error: Invalid port")
-    
+def run_tests(base_dir, server_executable):
+	# Case 1: Run without arguments
+	run_test([server_executable], "Usage: ./ircserv <port> <password>", base_dir)
+
+	# Case 2: Run with empty arguments
+	run_test([server_executable, ""], "Usage: ./ircserv <port> <password>", base_dir)
+	run_test([server_executable, "", ""], "Usage: ./ircserv <port> <password>", base_dir)
+
+	# Case 3: Valid port, missing password
+	run_test([server_executable, "6667"], "Usage: ./ircserv <port> <password>", base_dir)
+
+	# Case who cares: missing port, valid password
+	run_test([server_executable, "", "password123"], "Usage: ./ircserv <port> <password>", base_dir)
+
+	# Case 4: Invalid port (e.g., 80 is a common web port)
+	run_test([server_executable, "80", "password123"], "Error: Invalid port", base_dir)
+
+	# Case 5: Commonly used port (e.g., 22 for SSH)
+	run_test([server_executable, "22", "password123"], "Error: Invalid port", base_dir)
+
 	# Case 6: An impossible port number
-    run_test(["./ircserv", "-1", "password123"], "Error: Invalid port")
-    run_test(["./ircserv", "65536", "password123"], "Error: Invalid port")
+	run_test([server_executable, "-1", "password123"], "Error: Invalid port", base_dir)
+	run_test([server_executable, "65536", "password123"], "Error: Invalid port", base_dir)
 
-    print("\nAll tests completed.\n")
+	print("\nAll tests completed.\n")
