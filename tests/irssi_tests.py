@@ -6,18 +6,18 @@
 #    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:17 by akuburas          #+#    #+#              #
-#    Updated: 2025/02/19 13:09:24 by akuburas         ###   ########.fr        #
+#    Updated: 2025/02/19 14:09:06 by akuburas         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 import os
 import random
 import subprocess
-import sys
 import time
 
-# Define the approved lists
-APPROVED_NICKNAMES = ["Alice", "Bob", "Charlie", "Dave", "Eve", "Frank", "Grace", "Heidi", "Ivan", "Judy"]
+# Approved lists
+APPROVED_NICKNAMES = ["Alice", "Bob", "Charlie", "Dave", "Eve",
+					"Frank", "Grace", "Heidi", "Ivan", "Judy"]
 APPROVED_MESSAGES = [
 	"Hello everyone!",
 	"How's it going?",
@@ -31,24 +31,8 @@ APPROVED_MESSAGES = [
 	"Goodbye for now."
 ]
 
-# List of valid server configurations (port, password)
-VALID_SERVER_CONFIGS = [
-	("6667", "pass123"),
-	("6697", "secret"),
-	("7000", "letmein"),
-	("7070", "password"),
-]
-
-# Choose one configuration at random
-SERVER_PORT, SERVER_PASSWORD = random.choice(VALID_SERVER_CONFIGS)
-
-# A random channel name
-CHANNEL_NAME = f"#{random.choice(['general', 'random', 'chat', 'test'])}{random.randint(1, 100)}"
-
-# tmux session name for simulation
+# tmux simulation parameters
 SESSION_NAME = "irssi_sim"
-
-# Number of simulated clients (for now, 5)
 NUM_CLIENTS = 5
 
 def create_tmux_session(session_name):
@@ -60,64 +44,53 @@ def create_tmux_window(session, window_name, command):
 	print(f"[INFO] Created tmux window '{window_name}' with command: {command}")
 
 def send_tmux_command(target, command_str):
-	"""
-	Sends a command string (simulate keystrokes) to a tmux target.
-	`target` can be of the form session:window (or session:window.pane).
-	"""
 	subprocess.run(["tmux", "send-keys", "-t", target, command_str, "C-m"])
 
-def start_irssi_client(nickname):
-	"""
-	Launches an irssi client in a new tmux window. The client connects to the server using
-	the randomly selected SERVER_PORT and SERVER_PASSWORD.
-	"""
-	# Build the irssi command.
-	# Adjust this command as needed for your actual irssi or simulated client.
-	irssi_command = f"irssi -c 127.0.0.1 -p {SERVER_PORT} -w {SERVER_PASSWORD} -n {nickname}"
+def start_irssi_client(nickname, server_port, server_password):
+	# Build the irssi command using provided port and password.
+	irssi_command = f"irssi -c 127.0.0.1 -p {server_port} -w {server_password} -n {nickname}"
 	create_tmux_window(SESSION_NAME, nickname, irssi_command)
-	# Give the client a moment to start up before sending further commands.
+	# Give the client time to start
 	time.sleep(1)
-	return nickname  # returning the window name (nickname) as the target identifier
+	return nickname
 
-def simulate_activity(target):
-
-	# Join the channel. In irssi, the command is typically: /join #channel
-	send_tmux_command(f"{SESSION_NAME}:{target}", f"/join {CHANNEL_NAME}")
-	time.sleep(1)
+def start_simulation(server_port, server_password):
+	"""
+	Launches an interactive simulation.
 	
-	# Loop to send random messages.
-	# We will run this loop until the simulation is stopped.
-	while True:
-		# Choose a random message
-		msg = random.choice(APPROVED_MESSAGES)
-		# Send the message
-		send_tmux_command(f"{SESSION_NAME}:{target}", msg)
-		# Sleep for a random interval between messages (0.5 to 3 seconds)
-		time.sleep(random.uniform(0.5, 3))
-
-def start_simulation():
-
+	All clients will connect to the server at 127.0.0.1 using the given
+	server_port and server_password. A random channel name is generated,
+	and NUM_CLIENTS irssi clients (each in their own tmux window) join that channel.
+	Then, in parallel, each client starts sending random approved messages.
+	
+	The simulation runs until the user presses Enter.
+	"""
+	# Generate a random channel name
+	channel_name = f"#{random.choice(['general', 'random', 'chat', 'test'])}{random.randint(1, 100)}"
+	
+	# Create a new tmux session for the simulation.
 	create_tmux_session(SESSION_NAME)
 	
-	# Launch clients with random nicknames (select from approved list without duplicates)
+	# Launch clients with unique random nicknames.
 	nicknames = random.sample(APPROVED_NICKNAMES, NUM_CLIENTS)
 	clients = []
-	
 	for nick in nicknames:
-		start_irssi_client(nick)
+		start_irssi_client(nick, server_port, server_password)
 		clients.append(nick)
 	
-	print(f"[INFO] Simulation started with {NUM_CLIENTS} clients on channel {CHANNEL_NAME}.")
-	print(f"[INFO] Server running on port {SERVER_PORT} with password '{SERVER_PASSWORD}'.")
-	print("\n[INFO] Press Enter here to stop the simulation...\n")
+	print(f"[INFO] Simulation started with {NUM_CLIENTS} clients on channel {channel_name}.")
+	print(f"[INFO] Server running on port {server_port} with password '{server_password}'.")
+	print("\n[INFO] All clients have started. They should join the channel and begin messaging.")
+	print("[INFO] Press Enter here to stop the simulation...\n")
 	
-	# In parallel, we need to simulate message activity in each window.
-	# For simplicity in this example, we'll start separate subprocesses that run a Python one-liner loop.
-	# (Alternatively, you could use threading or asyncio.)
+	# Have each client join the channel.
+	for client in clients:
+		send_tmux_command(f"{SESSION_NAME}:{client}", f"/join {channel_name}")
+		time.sleep(0.5)
+	
+	# For each client, start a background process that repeatedly sends messages.
 	simulation_processes = []
 	for client in clients:
-		# Build a shell command that repeatedly sends random messages to the tmux window.
-		# We use a Python one-liner to do this.
 		python_cmd = (
 			"import random, time, subprocess;"
 			"messages = " + str(APPROVED_MESSAGES) + ";"
@@ -130,13 +103,13 @@ def start_simulation():
 		proc = subprocess.Popen(["python3", "-c", python_cmd])
 		simulation_processes.append(proc)
 	
-	# Wait for user input to stop simulation.
+	# Wait for user input to stop the simulation.
 	input()
 	
-	# Terminate the simulation processes (if they are still running)
+	# Terminate the background messaging processes.
 	for proc in simulation_processes:
 		proc.terminate()
 	
-	# Kill the tmux session to close all client windows.
+	# Kill the tmux session (closing all simulation windows).
 	subprocess.run(["tmux", "kill-session", "-t", SESSION_NAME])
 	print("[INFO] Simulation stopped and tmux session killed.")
