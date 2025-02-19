@@ -6,14 +6,14 @@
 #    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:25 by akuburas          #+#    #+#              #
-#    Updated: 2025/02/18 22:09:26 by akuburas         ###   ########.fr        #
+#    Updated: 2025/02/19 11:57:47 by akuburas         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 import subprocess
 import sys
 import os
-from test_cases import run_tests
+from test_cases import run_basic_tests
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(TESTS_DIR, ".."))
@@ -40,7 +40,7 @@ def main():
     compile_server()
 
     print("\nStarting tests...\n")
-    run_tests(BASE_DIR, SERVER_EXECUTABLE)
+    run_basic_tests(BASE_DIR, SERVER_EXECUTABLE)
 
     cleanup()
 

@@ -6,7 +6,7 @@
 #    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:22 by akuburas          #+#    #+#              #
-#    Updated: 2025/02/18 22:09:23 by akuburas         ###   ########.fr        #
+#    Updated: 2025/02/19 11:57:23 by akuburas         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -38,7 +38,7 @@ def run_test(command, expected_output, base_dir):
 		print(f"Expected: {expected_output}")
 		print(f"Got: {result}")
 
-def run_tests(base_dir, server_executable):
+def run_basic_tests(base_dir, server_executable):
 	# Case 1: Run without arguments
 	run_test([server_executable], "Usage: ./ircserv <port> <password>", base_dir)
 
