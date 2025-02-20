@@ -6,7 +6,7 @@
 #    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:25 by akuburas          #+#    #+#              #
-#    Updated: 2025/02/19 14:10:22 by akuburas         ###   ########.fr        #
+#    Updated: 2025/02/20 18:24:12 by akuburas         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -61,10 +61,10 @@ def main():
     server_port, server_password = random.choice(VALID_SERVER_CONFIGS)
     
     # Start the server.
-    server_process = start_server(SERVER_EXECUTABLE, server_port, server_password)
     
     print("\nStarting basic tests...\n")
     run_basic_tests(BASE_DIR, SERVER_EXECUTABLE)
+    server_process = start_server(SERVER_EXECUTABLE, server_port, server_password)
     
     print("\nStarting interactive simulation test...\n")
     start_simulation(server_port, server_password)
