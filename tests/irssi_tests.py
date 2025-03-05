@@ -6,7 +6,7 @@
 #    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:17 by akuburas          #+#    #+#              #
-#    Updated: 2025/03/05 15:39:26 by akuburas         ###   ########.fr        #
+#    Updated: 2025/03/05 15:49:31 by akuburas         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -31,6 +31,8 @@ APPROVED_MESSAGES = [
     "Just passing by.",
     "Goodbye for now."
 ]
+
+APPROVED_CHANNEL_NAMES = ["#general", "#random", "#test", "#chat", "#fun"]
 
 # tmux simulation parameters
 SESSION_NAME = "irssi_sim"
