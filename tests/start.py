@@ -6,7 +6,7 @@
 #    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:25 by akuburas          #+#    #+#              #
-#    Updated: 2025/02/20 18:24:12 by akuburas         ###   ########.fr        #
+#    Updated: 2025/03/10 08:08:06 by akuburas         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -41,12 +41,15 @@ def compile_server():
     print("✅ Compilation successful!")
 
 def start_server(server_executable, server_port, server_password):
-    server_cmd = [server_executable, server_port, server_password]
-    print(f"[INFO] Starting server: {' '.join(server_cmd)}")
-    server_process = subprocess.Popen(server_cmd, cwd=BASE_DIR)
+    tmux_session = "ircserv_sim"
+    subprocess.run(["tmux", "new-session", "-t", tmux_session], capture_output=True)
+    
+    server_cmd = f"{server_executable} {server_port} {server_password}"
+    print(f"[INFO] Starting server in tmux session '{tmux_session}' with command: {server_cmd}")
+    subprocess.Popen(["tmux", "new-session", "-d", "-s", tmux_session, server_cmd], cwd=BASE_DIR)
     # Allow time for the server to initialize.
     time.sleep(2)
-    return server_process
+    return tmux_session
 
 def cleanup():
     print("Cleaning up...")
@@ -64,13 +67,15 @@ def main():
     
     print("\nStarting basic tests...\n")
     run_basic_tests(BASE_DIR, SERVER_EXECUTABLE)
-    server_process = start_server(SERVER_EXECUTABLE, server_port, server_password)
+    server_session = start_server(SERVER_EXECUTABLE, server_port, server_password)
     
     print("\nStarting interactive simulation test...\n")
     start_simulation(server_port, server_password)
     
     # After simulation, terminate the server if it is still running.
-    server_process.terminate()
+    print(f"[INFO] Terminating server session '{server_session}'...")
+    subprocess.run(["tmux", "kill-session", "-t", server_session], capture_output=True)
+    
     cleanup()
 
 if __name__ == "__main__":

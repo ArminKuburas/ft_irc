@@ -6,7 +6,7 @@
 #    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:17 by akuburas          #+#    #+#              #
-#    Updated: 2025/03/05 15:49:31 by akuburas         ###   ########.fr        #
+#    Updated: 2025/03/10 07:43:42 by akuburas         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -120,7 +120,7 @@ def start_simulation(server_port, server_password):
         threads.append(thread)
     
     # Wait for user input to stop simulation
-    input()
+    input("Press Enter to stop the simulation...\n")
     
     # Stop threads
     running_threads = False
