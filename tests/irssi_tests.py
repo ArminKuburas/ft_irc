@@ -6,7 +6,7 @@
 #    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:17 by akuburas          #+#    #+#              #
-#    Updated: 2025/03/10 07:43:42 by akuburas         ###   ########.fr        #
+#    Updated: 2025/03/10 10:56:54 by akuburas         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -120,6 +120,13 @@ def start_simulation(server_port, server_password):
         threads.append(thread)
     
     # Wait for user input to stop simulation
+    print("To check the simulation, you can attach to the tmux session:")
+    print(f"  tmux attach-session -t {SESSION_NAME}")
+    print("To explore the windows, use Ctrl+b followed by a number (0-9).")
+    print("To detach from the session, use Ctrl+b followed by d.")
+    print("\n")
+    print("To attach to the server session, use:")
+    print(f"  tmux attach-session -t ircserv_sim\n")
     input("Press Enter to stop the simulation...\n")
     
     # Stop threads

@@ -6,7 +6,7 @@
 #    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:25 by akuburas          #+#    #+#              #
-#    Updated: 2025/03/10 08:08:06 by akuburas         ###   ########.fr        #
+#    Updated: 2025/03/10 10:47:18 by akuburas         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -42,8 +42,6 @@ def compile_server():
 
 def start_server(server_executable, server_port, server_password):
     tmux_session = "ircserv_sim"
-    subprocess.run(["tmux", "new-session", "-t", tmux_session], capture_output=True)
-    
     server_cmd = f"{server_executable} {server_port} {server_password}"
     print(f"[INFO] Starting server in tmux session '{tmux_session}' with command: {server_cmd}")
     subprocess.Popen(["tmux", "new-session", "-d", "-s", tmux_session, server_cmd], cwd=BASE_DIR)
