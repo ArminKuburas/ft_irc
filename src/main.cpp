@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:45 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/18 16:07:28 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/03/10 09:34:45 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,6 @@
 #include <fcntl.h>
 #include <poll.h>
 
-
 bool	isDigit(std::string str)
 {
 	for (char ch : str)
@@ -46,23 +45,31 @@ bool	isDigit(std::string str)
 
 bool	parsing(std::string port, std::string password)
 {
-	std::string usage = "Usage: ./ircserv <port> <password>";
-	if (password.empty())
+	try 
 	{
-		std::cout << "Error: password cannot be empty" << std::endl;
-		std::cout << usage << std::endl;
-		return (false);
+		std::string usage = "Usage: ./ircserv <port> <password>";
+		if (password.empty())
+		{
+			std::cerr << "Error: password cannot be empty" << std::endl;
+			std::cerr << usage << std::endl;
+			return (false);
+		} 
+		if (port.empty())
+		{
+			std::cerr << "Error: Invalid port" << std::endl;
+			std::cerr << usage << std::endl;
+			return (false);
+		}
+		if (!isDigit(port) || std::stoi(port) < 1 || std::stoi(port) > 65535)
+		{
+			std::cerr << "Error: Invalid port" << std::endl;
+			std::cerr << usage << std::endl;
+			return (false);
+		}
 	} 
-	if (port.empty())
+	catch (std::exception& e) 
 	{
-		std::cout << "Error: port cannot be empty" << std::endl;
-		std::cout << usage << std::endl;
-		return (false);
-	}
-	if (!isDigit(port) || std::stoi(port) < 1 || std::stoi(port) > 65535)
-	{
-		std::cout << "Error: port must be only digits within range 1-65535" << std::endl;
-		std::cout << usage << std::endl;
+		std::cerr << "Error: invalid port" << std::endl;
 		return (false);
 	}
 	return (true);
@@ -72,7 +79,7 @@ int main(int argc, char **argv)
 {
 	if (argc != 3)
 	{
-		std::cout << "Usage: ./ircserv <port> <password>" << std::endl;
+		std::cerr << "Usage: ./ircserv <port> <password>" << std::endl;
 		return (EXIT_FAILURE);
 	}
 	std::string port = argv[1], password = argv[2];

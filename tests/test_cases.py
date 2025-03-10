@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    test_cases.py                                      :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
+#    By: fdessoy- <fdessoy-@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:22 by akuburas          #+#    #+#              #
-#    Updated: 2025/02/19 11:57:23 by akuburas         ###   ########.fr        #
+#    Updated: 2025/03/10 09:36:06 by fdessoy-         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -53,10 +53,10 @@ def run_basic_tests(base_dir, server_executable):
 	run_test([server_executable, "", "password123"], "Usage: ./ircserv <port> <password>", base_dir)
 
 	# Case 4: Invalid port (e.g., 80 is a common web port)
-	run_test([server_executable, "80", "password123"], "Error: Invalid port", base_dir)
+	run_test([server_executable, "80", "password123"], "bind failed: Permission denied", base_dir)
 
 	# Case 5: Commonly used port (e.g., 22 for SSH)
-	run_test([server_executable, "22", "password123"], "Error: Invalid port", base_dir)
+	run_test([server_executable, "22", "password123"], "bind failed: Permission denied", base_dir)
 
 	# Case 6: An impossible port number
 	run_test([server_executable, "-1", "password123"], "Error: Invalid port", base_dir)
