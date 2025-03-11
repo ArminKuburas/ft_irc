@@ -6,7 +6,7 @@
 #    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:17 by akuburas          #+#    #+#              #
-#    Updated: 2025/03/11 14:11:04 by akuburas         ###   ########.fr        #
+#    Updated: 2025/03/11 14:28:52 by akuburas         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -18,6 +18,7 @@ import os
 import signal
 import sys
 import io
+import select
 
 # Approved lists
 APPROVED_NICKNAMES = ["Alice", "Bob", "Charlie", "Dave", "Eve",
@@ -139,9 +140,29 @@ def monitoring_thread(clients, server_pid):
 def check_user_input():
 	"""Check if the user has pressed Enter to stop the simulation."""
 	global user_input_recieved
-	input("Press Enter to stop the simulation...\n")
+	while True:
+		if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+			user_input = sys.stdin.readline().strip()
+			if user_input == "":
+				break
 	with user_input_recieved_lock:
 		user_input_recieved = True
+
+def timer(duration):
+	global running_threads
+	start_time = time.time()
+	end_time = start_time + duration
+	while time.time() < end_time:
+		remain_time = int(end_time - time.time())
+		minutes, seconds = divmod(remain_time, 60)
+		hours, minutes = divmod(minutes, 60)
+		timer_display = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+		sys.stdout.write(f"\r[INFO] Simulation will stop in {timer_display}...")
+		sys.stdout.flush()
+		time.sleep(1)
+	with running_threads_lock:
+		running_threads = False
+
 
 def start_simulation(server_port, server_password, server_pid):
 	"""
