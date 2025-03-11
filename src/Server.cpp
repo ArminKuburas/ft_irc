@@ -3,14 +3,26 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/11 22:08:23 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/12 10:19:07 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/03/11 12:08:47 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../inc/Server.hpp"
+
+static volatile sig_atomic_t s_shutdown = 0;
+
+extern "C" void sigintHandler(int sig) {
+    (void)sig;
+    s_shutdown = 1;
+    std::cout << "\nReceived SIGINT (Ctrl+C). Shutting down server gracefully..." << std::endl;
+}
+
+bool Server::isShutdownRequested() {
+    return s_shutdown == 1;
+}
 
 Server::Server(int port, std::string password) {
     this->_port = port;
@@ -86,7 +98,7 @@ bool Server::handleNewConnection() {
 
     _clients.push_back(std::make_shared<Client>(client_fd, client_addr));
 
-    std::cout << "[" + _name +"] New client connected: " << client_fd << std::endl;
+    std::cout << "[" + _name +"] News_shutdown client connected: " << client_fd << std::endl;
     return true;
 }
 
@@ -131,30 +143,32 @@ bool Server::handleClientData(size_t index) {
         (*client_it)->appendBuffer(buffer, bytes_read);
         (*client_it)->setLastActivity();
 
-        if ((*client_it)->hasCompleteMessage()) {
-            std::string data = (*client_it)->getAndClearBuffer();
-            if (data.size() > 4096) {
-                std::cerr << "[" + _name + "] Warning: Unusually large message received (size: " << data.size() << " bytes)" << std::endl;
-                return true;
-            }
+        if (!(*client_it)->hasCompleteMessage())
+			std::cout << fd << " >> [PARTIAL MESSSAGE] " << buffer << std::endl;
+		else{
+			std::string data = (*client_it)->getAndClearBuffer();
+			if (data.size() > 4096) {
+				std::cerr << "[" + _name + "] Warning: Unusually large message received (size: " << data.size() << " bytes)" << std::endl;
+				return true;
+			}
 			std::cout << fd << " >> " << data;
-            std::vector<std::string> messages = splitMessages(data);
-            
-            if (!(*client_it)->getRegistration()) {
-                if (!connectionHandshake(*client_it, messages, fd)) {
-                    disconnectClient(*client_it, "Invalid Password");
-                    return false;
-                }
-            } else {
-                for (const std::string& message : messages) {
-                    handleMessage(*client_it, message);
-                }
-            }
+			std::vector<std::string> messages = splitMessages(data);
+
+			if (!(*client_it)->getRegistration()) {
+				if (!connectionHandshake(*client_it, messages, fd)) {
+					disconnectClient(*client_it, "Invalid Password");
+					return false;
+				}
+			} else {
+				for (const std::string& message : messages) {
+					handleMessage(*client_it, message);
+				}
+			}
+			}
         }
+		return true;
     }
-    
-    return true;
-}
+
 
 void Server::Run() {
     _poll_fds.reserve(MAX_CLIENTS);
@@ -168,7 +182,7 @@ void Server::Run() {
     time_t lastCheck = std::time(NULL);
     const time_t checkInterval = 60;
 
-    while (true) {
+    while (!isShutdownRequested()) {
         int poll_result = poll(_poll_fds.data(), _poll_fds.size(), checkInterval * 1000);
         if (poll_result < 0) {
             if (errno == EINTR) continue;
@@ -215,6 +229,7 @@ void Server::Run() {
             }
         }
     }
+	shutdownServer();
 }
 
 void Server::disconnectClient(std::shared_ptr<Client>& client, const std::string& reason) {
@@ -230,6 +245,31 @@ void Server::disconnectClient(std::shared_ptr<Client>& client, const std::string
     close(client->getClientFd());
     _clients.erase(std::remove_if(_clients.begin(), _clients.end(),
         [fd = client->getClientFd()](const std::shared_ptr<Client>& c) { return c->getClientFd() == fd; }), _clients.end());
+}
+
+
+void Server::shutdownServer() {
+	std::cout << "Performing server cleanup..." << std::endl;
+	
+	// Disconnect all clients with a message
+	for (auto it = _clients.begin(); it != _clients.end(); ) {
+		auto client = *it;
+		++it; // Increment before potential removal
+		disconnectClient(client, "Server is shutting down");
+	}
+	
+	// Close server socket
+	if (_serverSocket >= 0) {
+		close(_serverSocket);
+		_serverSocket = -1;
+	}
+	
+	// Clear all client and channel data
+	_clients.clear();
+	_channels.clear();
+	_poll_fds.clear();
+	
+	std::cout << "Server shutdown complete" << std::endl;
 }
 
 void Server::checkClientTimeouts() {
@@ -426,7 +466,7 @@ void Server::User(std::shared_ptr<Client>& client, const std::string& message) {
     stream >> command >> username >> hostname >> servername;
     getline(stream, realname);
     if (username.empty() || hostname.empty() || servername.empty() || realname.empty()) {
-        SendToClient(client, ":" + _name + " 461 "+ client->getNick() + "USER :Not enough parameters\r\n");
+        SendToClient(client, ":" + _name + " 461 "+ client->getNick() + " USER :Not enough parameters\r\n");
         return;
     }
 
@@ -1230,7 +1270,7 @@ int Server::Pass(std::shared_ptr<Client>& client, const std::string& message) {
     stream >> command >> password;
     if (client->getAuthentication()) {
         SendToClient(client, ":" + _name + " 462 " + client->getNick() + " :You may not reregister\r\n");
-        return 0;
+        return 1;
     }
 
     if (password.empty()) {
