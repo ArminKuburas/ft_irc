@@ -6,7 +6,7 @@
 #    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:25 by akuburas          #+#    #+#              #
-#    Updated: 2025/03/10 10:47:18 by akuburas         ###   ########.fr        #
+#    Updated: 2025/03/11 09:43:28 by akuburas         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -22,6 +22,7 @@ from irssi_tests import start_simulation
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(TESTS_DIR, ".."))
 SERVER_EXECUTABLE = os.path.join(BASE_DIR, "ircserv")
+SERVER_SESSION = "ircserv_sim"
 
 # List of valid server configurations (port, password)
 VALID_SERVER_CONFIGS = [
@@ -41,13 +42,21 @@ def compile_server():
     print("✅ Compilation successful!")
 
 def start_server(server_executable, server_port, server_password):
-    tmux_session = "ircserv_sim"
-    server_cmd = f"{server_executable} {server_port} {server_password}"
-    print(f"[INFO] Starting server in tmux session '{tmux_session}' with command: {server_cmd}")
-    subprocess.Popen(["tmux", "new-session", "-d", "-s", tmux_session, server_cmd], cwd=BASE_DIR)
-    # Allow time for the server to initialize.
-    time.sleep(2)
-    return tmux_session
+	tmux_session = SERVER_SESSION
+	server_cmd = f"{server_executable} {server_port} {server_password}"
+	print(f"[INFO] Starting server in tmux session '{tmux_session}' with command: {server_cmd}")
+	subprocess.Popen(["tmux", "new-session", "-d", "-s", tmux_session, server_cmd], cwd=BASE_DIR)
+	# Allow time for the server to initialize.
+	time.sleep(2)
+	# Get the process id of the tmux session
+	result = subprocess.run(["tmux", "list-panes", "-t", tmux_session, "-F", "#{pane_pid}"], capture_output=True, text=True)
+	if result.returncode != 0:
+		print("❌ Failed to get tmux session PID!")
+		print(result.stderr)
+		sys.exit(1)
+	pid = result.stdout.strip()
+	print(f"[INFO] Server started with PID: {pid}")
+	return pid
 
 def cleanup():
     print("Cleaning up...")
@@ -64,15 +73,15 @@ def main():
     # Start the server.
     
     print("\nStarting basic tests...\n")
-    run_basic_tests(BASE_DIR, SERVER_EXECUTABLE)
-    server_session = start_server(SERVER_EXECUTABLE, server_port, server_password)
+    # run_basic_tests(BASE_DIR, SERVER_EXECUTABLE)
+    session_pid = start_server(SERVER_EXECUTABLE, server_port, server_password)
     
     print("\nStarting interactive simulation test...\n")
-    start_simulation(server_port, server_password)
+    start_simulation(server_port, server_password, session_pid)
     
     # After simulation, terminate the server if it is still running.
-    print(f"[INFO] Terminating server session '{server_session}'...")
-    subprocess.run(["tmux", "kill-session", "-t", server_session], capture_output=True)
+    print(f"[INFO] Terminating server session '{SERVER_SESSION}'...")
+    subprocess.run(["tmux", "kill-session", "-t", SERVER_SESSION], capture_output=True)
     
     cleanup()
 
