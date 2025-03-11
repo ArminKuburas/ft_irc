@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/11 22:08:23 by akuburas          #+#    #+#             */
-/*   Updated: 2025/03/11 12:08:47 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/03/11 13:29:19 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -233,43 +233,97 @@ void Server::Run() {
 }
 
 void Server::disconnectClient(std::shared_ptr<Client>& client, const std::string& reason) {
-    std::string quitBroadcast = ":" + client->getNick() + "!" + client->getUser() + "@" + client->getHost() + " QUIT :" + reason + "\r\n";
+    if (!client) {
+        std::cerr << "[Zorg] Attempted to disconnect null client" << std::endl;
+        return;
+    }
+    
+    int clientFd = client->getClientFd();
+    if (clientFd < 0) {
+        std::cerr << "[Zorg] Attempted to disconnect client with invalid fd" << std::endl;
+        return;
+    }
+    
+    // Store client info we'll need after modifications
+    std::string nick = client->getNick();
+    std::string user = client->getUser();
+    std::string host = client->getHost();
+    
+    // Notify other clients
+    std::string quitBroadcast = ":" + nick + "!" + user + "@" + host + " QUIT :" + reason + "\r\n";
     for (auto& c : _clients) {
-        if (c->getClientFd() != client->getClientFd()) {
+        if (c && c->getClientFd() != clientFd && c->getClientFd() >= 0) {
             SendToClient(c, quitBroadcast);
         }
     }
-
-    SendToClient(client, ":" + _name + " ERROR :Closing Link: " + client->getNick() + " " + reason + "\r\n");
-    shutdown(client->getClientFd(), SHUT_WR);
-    close(client->getClientFd());
-    _clients.erase(std::remove_if(_clients.begin(), _clients.end(),
-        [fd = client->getClientFd()](const std::shared_ptr<Client>& c) { return c->getClientFd() == fd; }), _clients.end());
+    
+    // Notify the disconnecting client
+    SendToClient(client, ":" + _name + " ERROR :Closing Link: " + nick + " " + reason + "\r\n");
+    
+    // Close the socket
+    shutdown(clientFd, SHUT_WR);
+    close(clientFd);
+    
+    // Remove client from all channels
+    std::vector<std::string> emptyChannels;
+    for (auto& [channelName, channel] : _channels) {
+        if (channel->isMember(client)) {
+            if (channel->isOperator(client)) {
+                channel->removeOperator(client, nullptr);
+            }
+            channel->removeMember(client);
+            
+            // If channel is now empty, mark it for removal
+            if (channel->isChannelEmpty()) {
+                emptyChannels.push_back(channelName);
+            }
+        }
+    }
+    
+    // Remove empty channels
+    for (const auto& channelName : emptyChannels) {
+        _channels.erase(channelName);
+    }
+    
+    // Remove from _clients vector using a safe approach
+    _clients.erase(
+        std::remove_if(_clients.begin(), _clients.end(),
+            [fd = clientFd](const std::shared_ptr<Client>& c) { return c->getClientFd() == fd; }),
+        _clients.end()
+    );
 }
 
-
 void Server::shutdownServer() {
-	std::cout << "Performing server cleanup..." << std::endl;
-	
-	// Disconnect all clients with a message
-	for (auto it = _clients.begin(); it != _clients.end(); ) {
-		auto client = *it;
-		++it; // Increment before potential removal
-		disconnectClient(client, "Server is shutting down");
-	}
-	
-	// Close server socket
-	if (_serverSocket >= 0) {
-		close(_serverSocket);
-		_serverSocket = -1;
-	}
-	
-	// Clear all client and channel data
-	_clients.clear();
-	_channels.clear();
-	_poll_fds.clear();
-	
-	std::cout << "Server shutdown complete" << std::endl;
+    std::cout << "Performing server cleanup..." << std::endl;
+    
+    // Create a copy of the clients vector to safely iterate over
+    std::vector<std::shared_ptr<Client>> clientsCopy = _clients;
+    
+    // Disconnect each client directly without modifying _clients yet
+    for (auto& client : clientsCopy) {
+        if (client) {  // Ensure the client pointer is valid
+            // Send the shutdown message directly
+            if (client->getClientFd() >= 0) {
+                std::string nick = client->getNick();
+                SendToClient(client, ":" + _name + " ERROR :Closing Link: " + nick + " Server is shutting down\r\n");
+                shutdown(client->getClientFd(), SHUT_WR);
+                close(client->getClientFd());
+            }
+        }
+    }
+    
+    // Now we can safely clear all collections
+    _clients.clear();
+    _channels.clear();
+    _poll_fds.clear();
+    
+    // Close server socket
+    if (_serverSocket >= 0) {
+        close(_serverSocket);
+        _serverSocket = -1;
+    }
+    
+    std::cout << "Server shutdown complete" << std::endl;
 }
 
 void Server::checkClientTimeouts() {
