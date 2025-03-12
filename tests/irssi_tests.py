@@ -6,7 +6,7 @@
 #    By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/18 22:09:17 by akuburas          #+#    #+#              #
-#    Updated: 2025/03/11 14:28:52 by akuburas         ###   ########.fr        #
+#    Updated: 2025/03/12 09:44:31 by akuburas         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -45,6 +45,7 @@ running_threads_lock = threading.Lock()
 running_threads = True  # Global flag to stop threads
 user_input_recieved_lock = threading.Lock()
 user_input_recieved = False
+SESSION_DURATION = 1 * 60  # 1 minute
 
 
 
@@ -126,9 +127,9 @@ def monitoring_thread(clients, server_pid):
 		for client in clients:
 			if not check_client_connection(client):
 				print(f"[ERROR] Client {client} disconnected.")
-				# with running_threads_lock:
-				# 	running_threads = False
-				# break
+				with running_threads_lock:
+					running_threads = False
+				break
 		if not check_server_status(server_pid):
 			print("[ERROR] Server crashed.")
 			with running_threads_lock:
@@ -144,6 +145,9 @@ def check_user_input():
 		if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
 			user_input = sys.stdin.readline().strip()
 			if user_input == "":
+				break
+		with user_input_recieved_lock:
+			if user_input_recieved:
 				break
 	with user_input_recieved_lock:
 		user_input_recieved = True
@@ -226,6 +230,8 @@ def start_simulation(server_port, server_password, server_pid):
 	print(f"  tmux attach-session -t ircserv_sim\n")
 	check_user_input_thread = threading.Thread(target=check_user_input)
 	check_user_input_thread.start()
+	timer_thread = threading.Thread(target=timer, args=(SESSION_DURATION,))
+	timer_thread.start()
 	while True:
 		with user_input_recieved_lock:
 			if user_input_recieved:
@@ -242,6 +248,7 @@ def start_simulation(server_port, server_password, server_pid):
 		thread.join()
 	monitor_thread.join()
 	check_user_input_thread.join()
+	timer_thread.join()
 	
 	# Kill the tmux session (closing all simulation windows)
 	subprocess.run(["tmux", "kill-session", "-t", SESSION_NAME])
