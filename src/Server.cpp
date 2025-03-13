@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/11 22:08:23 by akuburas          #+#    #+#             */
-/*   Updated: 2025/03/11 13:29:19 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/03/13 10:33:47 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,7 +98,7 @@ bool Server::handleNewConnection() {
 
     _clients.push_back(std::make_shared<Client>(client_fd, client_addr));
 
-    std::cout << "[" + _name +"] News_shutdown client connected: " << client_fd << std::endl;
+    std::cout << "[" + _name +"] New client connected: " << client_fd << std::endl;
     return true;
 }
 
@@ -331,18 +331,26 @@ void Server::checkClientTimeouts() {
     const time_t timeout = 300; // 5 minutes in seconds
     const time_t pingTimeout = 10; // 10 seconds to respond to PING
 
+    // Create a vector to store clients that need to be disconnected
+    std::vector<std::shared_ptr<Client>> clientsToDisconnect;
+
     for (auto& client : _clients) {
         if (client->getAwaitingPong()) {
             if ((currentTime - client->getPingTime()) > pingTimeout) {
-                disconnectClient(client, "Ping timeout");
+                clientsToDisconnect.push_back(client);
                 continue;
             }
         }
         if ((currentTime - client->getLastActivity()) > timeout) {
-            std::cout << "[Zorg] PING dead clients..." << std::endl;
+            std::cout << "[Zorg] PING dead client " << client->getClientFd() << std::endl;
             SendToClient(client, "PING " + client->getNick() + "\r\n");
             client->setPingStatus(true);
         }
+    }
+
+    // Disconnect the clients
+    for (auto& client : clientsToDisconnect) {
+        disconnectClient(client, "Ping timeout");
     }
 }
 
