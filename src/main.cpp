@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:45 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/18 16:07:28 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/03/11 12:10:00 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,11 @@
 #include <cstring>
 #include <fcntl.h>
 #include <poll.h>
+#include <signal.h>
 
+
+
+extern "C" void sigintHandler(int sig);
 
 bool	isDigit(std::string str)
 {
@@ -124,6 +128,18 @@ int main(int argc, char **argv)
 		close(irc_server.getSocket());
 		return (EXIT_FAILURE);
 	}
+	
+	// Set up signal handler for graceful shutdown
+	struct sigaction sa;
+	sa.sa_handler = sigintHandler;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	if (sigaction(SIGINT, &sa, NULL) == -1) {
+		perror("Error setting up signal handler");
+		close(irc_server.getSocket());
+		return EXIT_FAILURE;
+	}
+	
 	std::cout << "Server is listening in non-blocking mode" << std::endl;
 	std::cout << "Port: " << port << std::endl;
 	std::cout << "Pass: " << password << std::endl;

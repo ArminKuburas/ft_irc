@@ -3,14 +3,26 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/11 22:08:23 by akuburas          #+#    #+#             */
-/*   Updated: 2025/02/12 10:19:07 by akuburas         ###   ########.fr       */
+/*   Updated: 2025/03/13 10:33:47 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../inc/Server.hpp"
+
+static volatile sig_atomic_t s_shutdown = 0;
+
+extern "C" void sigintHandler(int sig) {
+    (void)sig;
+    s_shutdown = 1;
+    std::cout << "\nReceived SIGINT (Ctrl+C). Shutting down server gracefully..." << std::endl;
+}
+
+bool Server::isShutdownRequested() {
+    return s_shutdown == 1;
+}
 
 Server::Server(int port, std::string password) {
     this->_port = port;
@@ -131,30 +143,32 @@ bool Server::handleClientData(size_t index) {
         (*client_it)->appendBuffer(buffer, bytes_read);
         (*client_it)->setLastActivity();
 
-        if ((*client_it)->hasCompleteMessage()) {
-            std::string data = (*client_it)->getAndClearBuffer();
-            if (data.size() > 4096) {
-                std::cerr << "[" + _name + "] Warning: Unusually large message received (size: " << data.size() << " bytes)" << std::endl;
-                return true;
-            }
+        if (!(*client_it)->hasCompleteMessage())
+			std::cout << fd << " >> [PARTIAL MESSSAGE] " << buffer << std::endl;
+		else{
+			std::string data = (*client_it)->getAndClearBuffer();
+			if (data.size() > 4096) {
+				std::cerr << "[" + _name + "] Warning: Unusually large message received (size: " << data.size() << " bytes)" << std::endl;
+				return true;
+			}
 			std::cout << fd << " >> " << data;
-            std::vector<std::string> messages = splitMessages(data);
-            
-            if (!(*client_it)->getRegistration()) {
-                if (!connectionHandshake(*client_it, messages, fd)) {
-                    disconnectClient(*client_it, "Invalid Password");
-                    return false;
-                }
-            } else {
-                for (const std::string& message : messages) {
-                    handleMessage(*client_it, message);
-                }
-            }
+			std::vector<std::string> messages = splitMessages(data);
+
+			if (!(*client_it)->getRegistration()) {
+				if (!connectionHandshake(*client_it, messages, fd)) {
+					disconnectClient(*client_it, "Invalid Password");
+					return false;
+				}
+			} else {
+				for (const std::string& message : messages) {
+					handleMessage(*client_it, message);
+				}
+			}
+			}
         }
+		return true;
     }
-    
-    return true;
-}
+
 
 void Server::Run() {
     _poll_fds.reserve(MAX_CLIENTS);
@@ -168,7 +182,7 @@ void Server::Run() {
     time_t lastCheck = std::time(NULL);
     const time_t checkInterval = 60;
 
-    while (true) {
+    while (!isShutdownRequested()) {
         int poll_result = poll(_poll_fds.data(), _poll_fds.size(), checkInterval * 1000);
         if (poll_result < 0) {
             if (errno == EINTR) continue;
@@ -215,21 +229,101 @@ void Server::Run() {
             }
         }
     }
+	shutdownServer();
 }
 
 void Server::disconnectClient(std::shared_ptr<Client>& client, const std::string& reason) {
-    std::string quitBroadcast = ":" + client->getNick() + "!" + client->getUser() + "@" + client->getHost() + " QUIT :" + reason + "\r\n";
+    if (!client) {
+        std::cerr << "[Zorg] Attempted to disconnect null client" << std::endl;
+        return;
+    }
+    
+    int clientFd = client->getClientFd();
+    if (clientFd < 0) {
+        std::cerr << "[Zorg] Attempted to disconnect client with invalid fd" << std::endl;
+        return;
+    }
+    
+    // Store client info we'll need after modifications
+    std::string nick = client->getNick();
+    std::string user = client->getUser();
+    std::string host = client->getHost();
+    
+    // Notify other clients
+    std::string quitBroadcast = ":" + nick + "!" + user + "@" + host + " QUIT :" + reason + "\r\n";
     for (auto& c : _clients) {
-        if (c->getClientFd() != client->getClientFd()) {
+        if (c && c->getClientFd() != clientFd && c->getClientFd() >= 0) {
             SendToClient(c, quitBroadcast);
         }
     }
+    
+    // Notify the disconnecting client
+    SendToClient(client, ":" + _name + " ERROR :Closing Link: " + nick + " " + reason + "\r\n");
+    
+    // Close the socket
+    shutdown(clientFd, SHUT_WR);
+    close(clientFd);
+    
+    // Remove client from all channels
+    std::vector<std::string> emptyChannels;
+    for (auto& [channelName, channel] : _channels) {
+        if (channel->isMember(client)) {
+            if (channel->isOperator(client)) {
+                channel->removeOperator(client, nullptr);
+            }
+            channel->removeMember(client);
+            
+            // If channel is now empty, mark it for removal
+            if (channel->isChannelEmpty()) {
+                emptyChannels.push_back(channelName);
+            }
+        }
+    }
+    
+    // Remove empty channels
+    for (const auto& channelName : emptyChannels) {
+        _channels.erase(channelName);
+    }
+    
+    // Remove from _clients vector using a safe approach
+    _clients.erase(
+        std::remove_if(_clients.begin(), _clients.end(),
+            [fd = clientFd](const std::shared_ptr<Client>& c) { return c->getClientFd() == fd; }),
+        _clients.end()
+    );
+}
 
-    SendToClient(client, ":" + _name + " ERROR :Closing Link: " + client->getNick() + " " + reason + "\r\n");
-    shutdown(client->getClientFd(), SHUT_WR);
-    close(client->getClientFd());
-    _clients.erase(std::remove_if(_clients.begin(), _clients.end(),
-        [fd = client->getClientFd()](const std::shared_ptr<Client>& c) { return c->getClientFd() == fd; }), _clients.end());
+void Server::shutdownServer() {
+    std::cout << "Performing server cleanup..." << std::endl;
+    
+    // Create a copy of the clients vector to safely iterate over
+    std::vector<std::shared_ptr<Client>> clientsCopy = _clients;
+    
+    // Disconnect each client directly without modifying _clients yet
+    for (auto& client : clientsCopy) {
+        if (client) {  // Ensure the client pointer is valid
+            // Send the shutdown message directly
+            if (client->getClientFd() >= 0) {
+                std::string nick = client->getNick();
+                SendToClient(client, ":" + _name + " ERROR :Closing Link: " + nick + " Server is shutting down\r\n");
+                shutdown(client->getClientFd(), SHUT_WR);
+                close(client->getClientFd());
+            }
+        }
+    }
+    
+    // Now we can safely clear all collections
+    _clients.clear();
+    _channels.clear();
+    _poll_fds.clear();
+    
+    // Close server socket
+    if (_serverSocket >= 0) {
+        close(_serverSocket);
+        _serverSocket = -1;
+    }
+    
+    std::cout << "Server shutdown complete" << std::endl;
 }
 
 void Server::checkClientTimeouts() {
@@ -237,18 +331,26 @@ void Server::checkClientTimeouts() {
     const time_t timeout = 300; // 5 minutes in seconds
     const time_t pingTimeout = 10; // 10 seconds to respond to PING
 
+    // Create a vector to store clients that need to be disconnected
+    std::vector<std::shared_ptr<Client>> clientsToDisconnect;
+
     for (auto& client : _clients) {
         if (client->getAwaitingPong()) {
             if ((currentTime - client->getPingTime()) > pingTimeout) {
-                disconnectClient(client, "Ping timeout");
+                clientsToDisconnect.push_back(client);
                 continue;
             }
         }
         if ((currentTime - client->getLastActivity()) > timeout) {
-            std::cout << "[Zorg] PING dead clients..." << std::endl;
+            std::cout << "[Zorg] PING dead client " << client->getClientFd() << std::endl;
             SendToClient(client, "PING " + client->getNick() + "\r\n");
             client->setPingStatus(true);
         }
+    }
+
+    // Disconnect the clients
+    for (auto& client : clientsToDisconnect) {
+        disconnectClient(client, "Ping timeout");
     }
 }
 
@@ -426,7 +528,7 @@ void Server::User(std::shared_ptr<Client>& client, const std::string& message) {
     stream >> command >> username >> hostname >> servername;
     getline(stream, realname);
     if (username.empty() || hostname.empty() || servername.empty() || realname.empty()) {
-        SendToClient(client, ":" + _name + " 461 "+ client->getNick() + "USER :Not enough parameters\r\n");
+        SendToClient(client, ":" + _name + " 461 "+ client->getNick() + " USER :Not enough parameters\r\n");
         return;
     }
 
@@ -1230,7 +1332,7 @@ int Server::Pass(std::shared_ptr<Client>& client, const std::string& message) {
     stream >> command >> password;
     if (client->getAuthentication()) {
         SendToClient(client, ":" + _name + " 462 " + client->getNick() + " :You may not reregister\r\n");
-        return 0;
+        return 1;
     }
 
     if (password.empty()) {

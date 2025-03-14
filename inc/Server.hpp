@@ -18,6 +18,7 @@
 #include <memory>
 #include "Client.hpp"
 #include "Channel.hpp"
+#include <signal.h>
 
 #define SERVER_NAME "Zorg"
 #define JUST_JOINED 1
@@ -89,4 +90,6 @@ public:
     void initializeCommandHandlers();
     std::vector<std::string> splitMessages(const std::string& message);
     void checkClientTimeouts();
+	bool isShutdownRequested();
+	void shutdownServer();
 };
