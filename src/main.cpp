@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: fdessoy- <fdessoy-@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/08 09:49:45 by akuburas          #+#    #+#             */
-/*   Updated: 2025/03/11 12:10:00 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/03/17 11:22:50 by fdessoy-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,9 +63,18 @@ bool	parsing(std::string port, std::string password)
 		std::cout << usage << std::endl;
 		return (false);
 	}
-	if (!isDigit(port) || std::stoi(port) < 1 || std::stoi(port) > 65535)
+	try
 	{
-		std::cout << "Error: port must be only digits within range 1-65535" << std::endl;
+		if (!isDigit(port) || std::stoi(port) < 1 || std::stoi(port) > 65535)
+		{
+			std::cout << "Error: port must be only digits within range 1-65535" << std::endl;
+			std::cout << usage << std::endl;
+			return (false);
+		}
+	}
+	catch (std::exception& e)
+	{
+		std::cerr << "Error: port must be only digits within range 1-65535" << std::endl;
 		std::cout << usage << std::endl;
 		return (false);
 	}
