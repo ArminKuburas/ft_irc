@@ -6,7 +6,7 @@
 /*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/11 22:08:23 by akuburas          #+#    #+#             */
-/*   Updated: 2025/03/13 10:33:47 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/03/17 11:37:58 by pmarkaid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1069,7 +1069,6 @@ void Server::Kick(std::shared_ptr<Client>& client, const std::string& message) {
         std::string kickMessage = ":" + client->getNick() + "!" + client->getUser() + "@" + client->getHost() + 
                                 " KICK " + channelName + " " + userToKick + " :" + comment + "\r\n";
         SendToChannel(channelName, kickMessage, client, UNIVERSAL_MSG);
-        channel->removeMember(target);
 
         if (channel->isOperator(target)) {
             channel->removeOperator(target, nullptr);
@@ -1085,6 +1084,7 @@ void Server::Kick(std::shared_ptr<Client>& client, const std::string& message) {
                 }
             }
         }
+        channel->removeMember(target);
     }
 }
 
