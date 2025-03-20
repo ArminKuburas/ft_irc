@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmarkaid <pmarkaid@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: akuburas <akuburas@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/11 22:08:23 by akuburas          #+#    #+#             */
-/*   Updated: 2025/03/17 11:37:58 by pmarkaid         ###   ########.fr       */
+/*   Updated: 2025/03/20 13:26:53 by akuburas         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -628,7 +628,7 @@ void Server::Mode(std::shared_ptr<Client>& client, const std::string& message) {
                         it->second->setKey(targetUser);
                         SendToChannel(it->second->getName(), messageSyntax + " " + targetUser + "\r\n", client, UNIVERSAL_MSG);
                     } else {
-                        if (!targetUser.empty())
+                        if (targetUser.empty())
                             return;
                         it->second->setKey("");
                         SendToChannel(it->second->getName(), messageSyntax + "\r\n", client, UNIVERSAL_MSG);
